@@ -1,0 +1,62 @@
+name: AI Game Agent
+
+# एजेंट रन: "build" लेबल वाले Issue या उनके कमेंट से ट्रिगर होता है।
+# एजेंट अपने निर्देश AGENTS.md से लेता है।
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  agent:
+    # self-hosted = अपना PC (फ्री, अनलिमिटेड मिनट) — Settings → Actions → Runners से रजिस्टर करें।
+    # GitHub के रनर पर चलाने के लिए ubuntu-latest रखें।
+    runs-on: ubuntu-latest
+    # सिर्फ "build" लेबल वाले इश्यू (या उनके non-bot कमेंट) पर चले
+    if: >-
+      github.event.label.name == 'build' ||
+      (github.event_name == 'issue_comment' && github.event.comment.user.type != 'Bot')
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup dev environment (Godot 4.7.2 + Node + Python)
+        uses: ./.github/actions/setup-dev-env
+
+      - name: Run game agent
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          NVIDIA_BASE_URL: https://integrate.api.nvidia.com/v1
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          echo "=== AI Game Agent (issue #${ISSUE_NUMBER}: ${ISSUE_TITLE}) ==="
+          if [ -z "$NVIDIA_API_KEY" ]; then
+            echo "::warning::NVIDIA_API_KEY secret नहीं मिला — पहले repo secrets सेट करें (README देखें)।"
+          fi
+
+          # TODO(आप): नीचे दिए विकल्पों में से एक एजेंट runtime यहाँ wire करें।
+          #
+          # विकल्प A — OpenHands (किसी भी OpenAI-कम्पैटिबल API के साथ):
+          #   mkdir -p workspace && cd workspace
+          #   openhands  # या SDK से — config में LLM_API_KEY=$NVIDIA_API_KEY,
+          #   LLM_BASE_URL=$NVIDIA_BASE_URL, LLM_MODEL=<NIM मॉडल> दें; prompt:
+          #   "Read AGENTS.md at the repo root and execute the phase protocol for issue #${ISSUE_NUMBER}: ${ISSUE_TITLE}"
+          #
+          # विकल्प B — GitHub का अपना agentic workflow (gh aw compile):
+          #   https://docs.github.com/en/actions/tutorials/develop-agentic-workflows-in-github-actions
+          #
+          # विकल्प C — अपना custom agent CLI (OpenAI-कम्पैटिबल कोई भी)।
+          echo "Agent runtime अभी wire नहीं हुआ है — ऊपर TODO में से एक विकल्प चुनकर यह step बदलें। (README का 'पहली बार सेटअप' देखें।)"

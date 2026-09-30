@@ -1,0 +1,21 @@
+# Godot
+.godot/
+*.translation
+
+# Builds (export_presets.cfg हमेशा tracked रहता है — इसे .gitignore में न डालें)
+game/build/
+game/android/build/
+*.apk
+*.aab
+*.exe
+*.pck
+
+# Secrets — कभी commit नहीं (कानून)
+*.keystore
+*.jks
+.env
+
+# Agent/CI artifacts
+__pycache__/
+node_modules/
+.claude/

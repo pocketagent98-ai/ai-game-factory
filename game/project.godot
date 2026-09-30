@@ -1,0 +1,11 @@
+; Engine configuration file.
+; Godot 4.7.2 — AI Game Factory project
+
+config_version=5
+
+[application]
+
+config/name="AI Game Factory"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.7")
+config/icon="res://icon.svg"

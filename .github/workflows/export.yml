@@ -1,0 +1,28 @@
+name: Export Game (APK)
+
+# गेम बनने के बाद APK एक्सपोर्ट — हल्का जॉब (5-15 मिनट)।
+# ट्रिगर: मैन्युअल (Run workflow) या game/ में कोई push।
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ['game/**']
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Godot Android export (debug APK)
+        uses: dulvui/godot-android-export@v4
+        with:
+          godot-version: 4.7.2
+          working-directory: game
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-apk
+          path: game/build/*.apk
+          if-no-files-found: error
