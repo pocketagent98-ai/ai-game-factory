@@ -1,26 +1,16 @@
-# GDD — <Game Title>
+# GDD — Turbo Rush
 
-> Status: `DRAFT` | `APPROVED`
-> (Phase 0 में एजेंट यह फाइल भरता है; मालिक के `approved` कमेंट के बाद ही बिल्ड शुरू होता है)
+> Status: `APPROVED` — the Owner supplied the full spec series (Gate 1 satisfied).
 
-## 1. Pitch (एक पैराग्राफ में गेम क्या है)
+**The complete GDD lives in `docs/turbo-rush/`:**
 
-## 2. Genre & References (किस तरह का गेम, किन गेम्स जैसा)
+1. `01_PRD.md` — product requirements (game design, difficulty, economy, rewards, cars, upgrades)
+2. `02_TRD.md` — technical requirements (architecture, scene structure, core systems, generation rules)
+3. `03_App_Flow.md` — app/navigation flow
+4. `04_UIUX_Design_Brief.md` — UI/UX design brief
+5. `05_Backend_Save_Schema.md` — save schema (implement LOCAL-ONLY per BUILD_NOTES.md)
+6. `06_Implementation_Plan.md` — milestones M0-M7
 
-## 3. Core Loop (खिलाड़ी बार-बार क्या करता है)
+**Owner directives:** `docs/turbo-rush/BUILD_NOTES.md` (local-only saves, Unity Ads ID 6195678, build order).
 
-## 4. Mechanics (हर मैकेनिक का डिटेल — movement, combat, scoring, progression)
-
-## 5. Camera & Controls (Android touch-first)
-
-## 6. Art Style & Assets (सिर्फ CC0/MIT; Kenney/Quaternius/Asset Library से स्रोत)
-
-## 7. Audio (CC0 sources)
-
-## 8. UI Screens (menu, HUD, game over, pause)
-
-## 9. Scope — MVP बनाम Polish (पहले क्या ज़रूरी, बाद में क्या)
-
-## 10. Platform Targets (Android-first; screen sizes, performance budget)
-
-## 11. Definition of Done (कब गेम "पूरा" माना जाएगा)
+Agents: start at Phase 1 (task plan) of the AGENTS.md protocol.

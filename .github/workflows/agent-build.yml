@@ -37,6 +37,9 @@ jobs:
           NVIDIA_BASE_URL: https://integrate.api.nvidia.com/v1
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          NANOROUTER_API_KEY: ${{ secrets.NANOROUTER_API_KEY }}
+          ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
+          ZAI_BASE_URL: https://api.z.ai/api/paas/v4
           GH_TOKEN: ${{ secrets.GH_PAT }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_TITLE: ${{ github.event.issue.title }}

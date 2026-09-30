@@ -20,6 +20,7 @@ Everything else — architecture, code, assets, tests, fixes, builds — is your
 | `docs/tasks.md` | Numbered task list (Phase 1 output) |
 | `docs/assets.md` | Asset log: source URL + license for every asset |
 | `docs/build-state.json` | Checkpoint file — update after every phase |
+| `docs/turbo-rush/` | **Current game: full Turbo Rush spec series + owner build notes** |
 | `.github/workflows/export.yml` | APK build (trigger after Phase 4/5) |
 
 ## Model routing
@@ -28,7 +29,7 @@ All endpoints are OpenAI-compatible; switch by changing base URL + key.
 
 - **MAIN CODING** (GDScript, .tscn, task execution): env `NVIDIA_API_KEY` / `NVIDIA_BASE_URL` (NVIDIA NIM — large open models, e.g. deepseek/qwen class)
 - **PLANNING + VISION QA** (screenshot review) + optional 2D art: env `GEMINI_API_KEY`
-- **FALLBACK**: env `OPENROUTER_API_KEY`
+- **FALLBACK**: env `OPENROUTER_API_KEY`, `NANOROUTER_API_KEY` (free models), or `ZAI_API_KEY` / `ZAI_BASE_URL` (GLM models)
 
 Never print, echo, log, commit, or paste API keys anywhere.
 
@@ -99,3 +100,10 @@ Screen shake, particles, sound, UI transitions, difficulty balance. Optional; ma
 - [ ] Screenshots reviewed (visual QA)
 - [ ] APK builds in the export workflow
 - [ ] Issue closed with a summary
+
+## Game-specific: Turbo Rush (current build)
+
+- The current game is **Turbo Rush** — the full approved spec series is in `docs/turbo-rush/` (Gate 1 is satisfied; start at Phase 1).
+- Owner directives in `docs/turbo-rush/BUILD_NOTES.md` override this manual where they conflict (local-only saves, ads config, build order).
+- LOCAL-ONLY saves: no backend, no cloud, no accounts — everything on-device via a SaveService interface.
+- Unity Ads Game ID `6195678` (Android & iOS) behind a MonetizationService abstraction; rewarded ads never grant Diamonds.
