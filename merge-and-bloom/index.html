@@ -7,8 +7,8 @@
 <title>Merge &amp; Bloom</title>
 <style>
 :root{
-  --bg1:#0f3d2e; --bg2:#124b39; --panel:#173e33; --line:rgba(255,255,255,.12);
-  --ink:#eafff5; --dim:#9fc4b4; --accent:#7ef0b0; --gold:#ffd54f; --danger:#ff7a7a;
+  --bg1:#0f3d2e; --bg2:#124b39; --panel:#173e33; --line:rgba(255,255,255,.14);
+  --ink:#eafff5; --dim:#a9cdbf; --accent:#7ef0b0; --gold:#ffd54f;
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
@@ -17,50 +17,73 @@ body{
   color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
 }
-#app{max-width:520px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;padding:10px 12px calc(12px + env(safe-area-inset-bottom));gap:8px}
+#app{max-width:520px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;padding:8px 12px calc(12px + env(safe-area-inset-bottom));gap:7px}
 .topbar{display:flex;align-items:center;justify-content:space-between}
-.brand{font-weight:700;font-size:17px}
+.brand{font-weight:800;font-size:17px}
 .icon-btn{background:transparent;border:0;font-size:19px;color:var(--ink)}
 .hud{display:flex;gap:8px}
-.stat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:7px 10px;font-weight:700;display:flex;gap:6px;align-items:center;justify-content:center}
-.stat .k{font-size:15px}
-.stat .dim{color:var(--dim);font-weight:500;font-size:12px}
-.bloom-label{font-size:12px;color:var(--dim);margin-bottom:4px}
-.bloom-bar{height:9px;background:rgba(255,255,255,.09);border-radius:9px;overflow:hidden}
+.stat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 10px;font-weight:800;display:flex;gap:6px;align-items:center;justify-content:center}
+.stat .dim{color:var(--dim);font-weight:600;font-size:12px}
+.bloom-label{font-size:12px;color:var(--dim);margin-bottom:3px}
+.bloom-bar{height:8px;background:rgba(255,255,255,.10);border-radius:9px;overflow:hidden}
 .bloom-fill{height:100%;width:0;background:linear-gradient(90deg,#4ade80,#a3e635,#facc15);transition:width .25s}
-.tabs{display:flex;gap:6px;background:rgba(0,0,0,.18);padding:4px;border-radius:12px}
-.tab{flex:1;background:transparent;border:0;color:var(--dim);padding:8px;border-radius:9px;font-weight:600;font-size:14px}
-.tab.active{background:var(--panel);color:var(--ink);box-shadow:0 1px 0 rgba(255,255,255,.06) inset}
+
+.combo-wrap{display:flex;align-items:center;gap:8px}
+.combo-val{font-weight:900;font-size:13px;color:#ffe066;white-space:nowrap}
+.combo-bar{flex:1;height:6px;background:rgba(255,255,255,.10);border-radius:9px;overflow:hidden}
+.combo-fill{height:100%;width:0;background:linear-gradient(90deg,#ffd54f,#ff7043)}
+.frenzy{text-align:center;font-weight:900;background:linear-gradient(90deg,#ff7043,#ffd54f);color:#3a1c00;border-radius:10px;padding:5px;font-size:13px;animation:pulse .8s infinite alternate}
+@keyframes pulse{from{filter:brightness(1)}to{filter:brightness(1.25)}}
+
+.tabs{display:flex;gap:5px;background:rgba(0,0,0,.18);padding:4px;border-radius:12px}
+.tab{flex:1;background:transparent;border:0;color:var(--dim);padding:8px 2px;border-radius:9px;font-weight:700;font-size:13px}
+.tab.active{background:var(--panel);color:var(--ink)}
 .panels{flex:1;min-height:0}
-.panel{height:100%;display:flex;flex-direction:column;gap:10px;min-height:0}
+.panel{height:100%;display:flex;flex-direction:column;gap:9px;min-height:0}
 .board-wrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
-canvas{display:block;touch-action:none;border-radius:16px;background:rgba(0,0,0,.16)}
+canvas{display:block;touch-action:none;border-radius:16px;background:rgba(0,0,0,.18)}
+
 .orders{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
-.order{flex:0 0 auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;min-width:132px}
-.order.ready{border-color:var(--accent)}
-.order-items{display:flex;gap:6px;font-size:18px;align-items:center}
-.chip{display:inline-flex;gap:2px;align-items:center;font-size:14px}
-.btn{border:0;border-radius:12px;padding:11px 14px;font-weight:700;font-size:14px;background:#265c4b;color:var(--ink)}
-.btn:disabled{opacity:.45}
+.order{flex:0 0 auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:7px 9px;display:flex;flex-direction:column;gap:5px;min-width:128px}
+.order.ready{border-color:var(--accent);box-shadow:0 0 0 2px rgba(126,240,176,.25)}
+.order-items{display:flex;gap:7px;font-size:15px;align-items:center}
+.chip{display:inline-flex;gap:2px;align-items:center;font-size:13px;color:var(--dim)}
+.chip.ok{color:var(--accent)}
+.chip b{font-size:12px}
+
+.actionbar{display:flex;gap:8px;align-items:stretch}
+.boosters{display:flex;gap:6px}
+.booster{position:relative;background:#1e4f40;border:1px solid var(--line);border-radius:12px;font-size:20px;width:46px;color:var(--ink)}
+.booster:disabled{opacity:.4}
+.booster .cnt{position:absolute;right:2px;bottom:0;font-size:10px;font-weight:800;color:#ffe066}
+.btn{border:0;border-radius:12px;padding:11px 14px;font-weight:800;font-size:14px;background:#265c4b;color:var(--ink)}
+.btn:disabled{opacity:.4}
 .btn.primary{background:linear-gradient(180deg,#2ea36b,#1f7d51)}
-.btn.pod{background:linear-gradient(180deg,#3fae7a,#25794f);font-size:16px;padding:14px}
-.deliver{background:#2b6a56;padding:7px;font-size:13px}
-.panel-head{font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.btn.pod{flex:1;background:linear-gradient(180deg,#3fae7a,#25794f);font-size:16px;padding:14px}
+.deliver{background:#2b6a56;padding:6px;font-size:13px}
+.panel-head{font-weight:800;display:flex;justify-content:space-between;align-items:center}
 .garden{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .plot{aspect-ratio:1;background:var(--panel);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:30px}
 .plot.locked{opacity:.4;font-size:20px}
 .plot.planted{border-color:var(--accent)}
-.plot .rate{font-size:11px;color:var(--dim);font-weight:600}
+.plot .rate{font-size:11px;color:var(--dim);font-weight:700}
 .plot .plus{color:var(--dim);font-size:26px}
 .upgrades{display:flex;flex-direction:column;gap:8px;overflow:auto}
-.upg{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px}
-.upg-title{font-weight:700}
+.upg{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px 10px}
+.upg.ready{border-color:var(--accent)}
+.upg-title{font-weight:800}
 .upg-sub{font-size:12px;color:var(--dim)}
-.buy{background:#2b6a56;padding:9px 12px}
+.lvl{font-size:11px;color:var(--dim);font-weight:700}
+.buy{background:#2b6a56;padding:8px 12px}
+.buy.ok{background:linear-gradient(180deg,#2ea36b,#1f7d51)}
+.mbar{height:6px;background:rgba(255,255,255,.10);border-radius:6px;overflow:hidden;margin:4px 0}
+.mfill{height:100%;background:linear-gradient(90deg,#4ade80,#a3e635)}
 .hint{font-size:12px;color:var(--dim);margin:0}
-.toast{position:fixed;left:50%;bottom:84px;transform:translate(-50%,20px);background:#0b2a21;border:1px solid var(--line);padding:9px 14px;border-radius:12px;font-weight:700;opacity:0;pointer-events:none;transition:.2s}
+.chest-btn{position:fixed;right:14px;bottom:88px;width:56px;height:56px;border-radius:50%;border:0;font-size:26px;background:#265c4b;color:#fff;box-shadow:0 6px 16px rgba(0,0,0,.35)}
+.chest-btn.ready{background:linear-gradient(180deg,#ffd54f,#ff9800);animation:pulse .7s infinite alternate}
+.toast{position:fixed;left:50%;bottom:150px;transform:translate(-50%,20px);background:#0b2a21;border:1px solid var(--line);padding:9px 14px;border-radius:12px;font-weight:800;opacity:0;pointer-events:none;transition:.2s;max-width:90%}
 .toast.show{opacity:1;transform:translate(-50%,0)}
-.modal-back{position:fixed;inset:0;background:rgba(3,16,12,.72);display:flex;align-items:center;justify-content:center;padding:20px;z-index:20}
+.modal-back{position:fixed;inset:0;background:rgba(3,16,12,.75);display:flex;align-items:center;justify-content:center;padding:20px;z-index:20}
 .modal{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;max-width:360px;width:100%}
 .modal h3{margin:0 0 6px}
 .modal p{margin:0 0 14px;color:var(--dim);font-size:14px}
@@ -86,9 +109,16 @@ canvas{display:block;touch-action:none;border-radius:16px;background:rgba(0,0,0,
     <div class="bloom-bar"><div id="bloomFill" class="bloom-fill"></div></div>
   </div>
 
+  <div id="comboWrap" class="combo-wrap" style="visibility:hidden">
+    <span id="comboVal" class="combo-val">COMBO ×1</span>
+    <div class="combo-bar"><div id="comboFill" class="combo-fill"></div></div>
+  </div>
+  <div id="frenzyBanner" class="frenzy" style="display:none">🔥 MERGE FRENZY · <span id="frenzyTime">15s</span></div>
+
   <nav class="tabs">
     <button id="tabMerge" class="tab active">Merge</button>
     <button id="tabGarden" class="tab">Garden</button>
+    <button id="tabTasks" class="tab">Tasks</button>
     <button id="tabUpgrades" class="tab">Upgrades</button>
   </nav>
 
@@ -96,7 +126,10 @@ canvas{display:block;touch-action:none;border-radius:16px;background:rgba(0,0,0,
     <section id="panelMerge" class="panel">
       <div class="board-wrap"><canvas id="board"></canvas></div>
       <div id="orders" class="orders"></div>
-      <button id="podBtn" class="btn pod"><span id="podLabel">Tap Seed Pod</span></button>
+      <div class="actionbar">
+        <div id="boosters" class="boosters"></div>
+        <button id="podBtn" class="btn pod"><span id="podLabel">Tap Seed Pod</span></button>
+      </div>
     </section>
 
     <section id="panelGarden" class="panel" style="display:none">
@@ -106,12 +139,19 @@ canvas{display:block;touch-action:none;border-radius:16px;background:rgba(0,0,0,
       <p class="hint">Plants keep producing coins while you're away (offline cap applies). Tap an empty plot to plant your highest-tier item.</p>
     </section>
 
+    <section id="panelTasks" class="panel" style="display:none">
+      <div class="panel-head">Daily missions</div>
+      <div id="missionsList" class="upgrades"></div>
+      <p class="hint">Missions refresh every day. Claim them for bonus coins.</p>
+    </section>
+
     <section id="panelUpgrades" class="panel" style="display:none">
       <div class="panel-head">Upgrades</div>
       <div id="upgradesList" class="upgrades"></div>
     </section>
   </main>
 
+  <button id="chestBtn" class="chest-btn" aria-label="Reward chest">🎁</button>
   <div id="toast" class="toast"></div>
   <div id="modalRoot"></div>
 </div>
@@ -119,10 +159,8 @@ canvas{display:block;touch-action:none;border-radius:16px;background:rgba(0,0,0,
 (function(){
 "use strict";
 // Merge & Bloom — configuration (all tunables in one place)
-const GRID = 6;                 // 6x6 board
+const GRID = 6;
 const MAX_TIER = 12;
-
-// 12-tier merge chain: name, coin value, colour, glyph
 const TIERS = [
   { n: 1,  name: "Sprout",         value: 1,    color: "#8bc34a", glyph: "\u{1F331}" },
   { n: 2,  name: "Seedling",       value: 3,    color: "#7cb342", glyph: "\u{1F33F}" },
@@ -138,41 +176,78 @@ const TIERS = [
   { n: 12, name: "World Tree",     value: 6000, color: "#26a69a", glyph: "\u{1F30D}" },
 ];
 const ENERGY_CAP_START       = 50;
-const ENERGY_REGEN_SECONDS   = 40;   // +1 energy every 40s (web-friendly)
+const ENERGY_REGEN_SECONDS   = 40;
 const ENERGY_REWARDED_AMOUNT = 25;
-const ENERGY_REWARDED_DAILY  = 3;
-const POD_CHARGE_START     = 30;     // taps before cooldown
+const ENERGY_REWARDED_DAILY  = 5;
+const POD_CHARGE_START     = 30;
 const POD_COOLDOWN_SECONDS = 60;
-
-// Pod drop tables: [ [tier, probability], ... ]
 const POD_TABLES = {
   1: [[1, 1.0]],
   2: [[1, 0.90], [2, 0.10]],
   3: [[1, 0.80], [2, 0.18], [3, 0.02]],
   4: [[1, 0.70], [2, 0.24], [3, 0.05], [4, 0.01]],
+  5: [[1, 0.60], [2, 0.28], [3, 0.09], [4, 0.03]],
 };
-const POD_MAX_LEVEL = 4;
+const POD_MAX_LEVEL = 5;
 const ORDER_SLOTS = 4;
 const BLOOM_PER_MERGE = 1;
-const BLOOM_THRESHOLD = 20;          // merges to unlock the next plot
+const BLOOM_THRESHOLD = 20;
 const OFFLINE_CAP_HOURS_START = 4;
 const OFFLINE_CAP_MAX = 24;
-
-// Garden: coins per hour for a planted item of a given tier
 const gardenRate = (tier) => 10 * Math.pow(2, Math.max(0, tier - 2));
-const UPGRADE_BASE = 250;
-const UPGRADE_MULT = 1.55;           // cost = base * mult^(level-1)
+const UPGRADE_MULT = 1.55;
+
+// -------- fun systems -----------------------------------------------------
+const COMBO_WINDOW_MS = 1600;   // merge again within this to keep the combo alive
+const COMBO_MAX = 8;            // combo multiplier cap
+const FRENZY_COMBO = 5;         // reaching this combo triggers Merge Frenzy
+const FRENZY_MS = 15000;        // frenzy duration
+const CHEST_INTERVAL_MS = 75000;// a reward chest appears about this often
+const CHEST_FIRST_MS = 20000;   // first chest soon after start
+
+// Upgrade catalogue: key, title, sub, base cost, max level
+const UPGRADES = [
+  { key: "energyCap",    title: "Energy capacity",     sub: "+25 max energy",          base: 250, max: 6 },
+  { key: "regen",        title: "Energy regen",        sub: "faster refill",           base: 200, max: 6 },
+  { key: "podLevel",     title: "Seed Pod",            sub: "better drops",            base: 400, max: POD_MAX_LEVEL },
+  { key: "mergeValue",   title: "Merge value",         sub: "+15% coins per merge",    base: 350, max: 8 },
+  { key: "comboWindow",  title: "Combo window",        sub: "+0.3s to chain combos",   base: 300, max: 6 },
+  { key: "orderSlots",   title: "Order slots",         sub: "+1 visitor order",        base: 800, max: 3 },
+  { key: "luckyDrop",    title: "Lucky drop",          sub: "+5% higher-tier spawns",  base: 500, max: 5 },
+  { key: "gardenEff",    title: "Garden efficiency",   sub: "+10% offline output",     base: 450, max: 5 },
+  { key: "offlineCap",   title: "Garden offline cap",  sub: "+4h offline",             base: 300, max: 6 },
+  { key: "autoProducer", title: "Auto-Producer",       sub: "free plants over time",   base: 600, max: 7 },
+];
+
+// Reward chest contents (granted after the rewarded ad completes)
+const CHEST = {
+  coinsMin: 120, coinsMax: 400,
+  energy: 30,
+  boosterChance: 0.35,
+};
+
+// Daily missions (rotate through this pool; 3 active per day)
+const MISSION_POOL = [
+  { id: "merge25",  text: "Make 25 merges",            type: "merge", target: 25, reward: 300 },
+  { id: "order5",   text: "Complete 5 visitor orders",  type: "order", target: 5,  reward: 400 },
+  { id: "combo4",   text: "Reach a x4 combo",           type: "combo", target: 4,  reward: 350 },
+  { id: "tier6",    text: "Merge up to a Fruit Tree",   type: "tier",  target: 6,  reward: 450 },
+  { id: "chest2",   text: "Open 2 reward chests",       type: "chest", target: 2,  reward: 350 },
+  { id: "spawn30",  text: "Tap the Seed Pod 30 times",  type: "spawn", target: 30, reward: 300 },
+];
 const REWARDED = {
-  energy:      { cap: ENERGY_REWARDED_DAILY, coinsAlt: 100 },
-  cooldown:    { cap: 2, coinsAlt: 50 },
-  luckyBloom:  { cap: 2, coinsAlt: 150 },
-  refreshOrders: { cap: 1, coinsAlt: 40 },
+  energy:        { cap: ENERGY_REWARDED_DAILY, coinsAlt: 100 },
+  cooldown:      { cap: 3, coinsAlt: 50 },
+  luckyBloom:    { cap: 3, coinsAlt: 150 },
+  refreshOrders: { cap: 2, coinsAlt: 40 },
+  chest:         { cap: 6, coinsAlt: 250 },
   doubleHarvest: { cap: 1, coinsAlt: 0 },
 };
 
 // Merge & Bloom — pure game model (no DOM, unit-testable)
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const UPG = Object.fromEntries(UPGRADES.map(u => [u.key, u]));
 class GameModel {
   constructor() { this.reset(); }
 
@@ -184,16 +259,32 @@ class GameModel {
     this.level = 1;
     this.bloom = 0;
     this.orders = [];
-    this.plots = new Array(12).fill(0);   // 0 = empty, else planted tier
-    this.upgrades = { energyCap: 1, regen: 1, podLevel: 1, offlineCap: 1, autoProducer: 0 };
+    this.plots = new Array(12).fill(0);
+    this.upgrades = {
+      energyCap: 1, regen: 1, podLevel: 1, mergeValue: 1, comboWindow: 1,
+      orderSlots: 1, luckyDrop: 1, gardenEff: 1, offlineCap: 1, autoProducer: 1,
+    };
     this.podCharge = POD_CHARGE_START;
     this.podCooldownEnds = 0;
-    this.energyCarry = 0;                 // fractional seconds toward next energy
+    this.energyCarry = 0;
     this.autoCarry = 0;
     this.lastTick = Date.now();
     this.lastCollect = Date.now();
-    this.daily = { rewardedCounts: {}, dayKey: this._dayKey() };
+
+    // fun systems
+    this.combo = 0;
+    this.comboExpires = 0;
+    this.bestCombo = 0;
+    this.frenzyUntil = 0;
+    this.chestReady = false;
+    this.nextChestAt = Date.now() + CHEST_FIRST_MS;
+    this.boosters = { shovel: 1, mixer: 1, lucky: 1 };
+
+    const day = this._dayKey();
+    this.daily = { rewardedCounts: {}, dayKey: day, missionDay: day };
+    this.missions = [];
     this.genOrders(true);
+    this._rollMissions();
   }
 
   // ---- helpers ----------------------------------------------------------
@@ -205,6 +296,13 @@ class GameModel {
   get podLevel() { return clamp(this.upgrades.podLevel, 1, POD_MAX_LEVEL); }
   get offlineCapHours() { return Math.min(OFFLINE_CAP_MAX, OFFLINE_CAP_HOURS_START + (this.upgrades.offlineCap - 1) * 4); }
   get plotsUnlocked() { return clamp(2 + Math.floor(this.level / 2) + Math.floor(this.bloom / BLOOM_THRESHOLD), 2, 12); }
+  get mergeValueMult() { return 1 + 0.15 * (this.upgrades.mergeValue - 1); }
+  get comboWindowMs() { return COMBO_WINDOW_MS + (this.upgrades.comboWindow - 1) * 300; }
+  get orderSlotCount() { return ORDER_SLOTS + (this.upgrades.orderSlots - 1); }
+  get luckyChance() { return 0.05 * (this.upgrades.luckyDrop - 1); }
+  get gardenEfficiency() { return Math.min(1.3, 0.8 + (this.upgrades.gardenEff - 1) * 0.1); }
+  get frenzyActive() { return Date.now() < this.frenzyUntil; }
+  get comboActive() { return Date.now() < this.comboExpires && this.combo > 0; }
 
   emptyCells() { const out = []; for (let i = 0; i < this.grid.length; i++) if (this.grid[i] === 0) out.push(i); return out; }
   isFull() { return this.emptyCells().length === 0; }
@@ -230,45 +328,62 @@ class GameModel {
 
   rollPodTier() {
     const table = POD_TABLES[this.podLevel] || POD_TABLES[1];
-    let r = this._roll(), acc = 0;
-    for (const [tier, p] of table) { acc += p; if (r <= acc) return tier; }
-    return table[0][0];
+    let r = this._roll(), acc = 0, tier = table[0][0];
+    for (const [t, p] of table) { acc += p; if (r <= acc) { tier = t; break; } }
+    if (this.luckyChance > 0 && this._roll() < this.luckyChance) tier = Math.min(MAX_TIER, tier + 1);
+    return tier;
   }
 
   tapPod(now = Date.now()) {
-    if (this.energy < 1) return { ok: false, reason: "energy" };
+    const free = this.frenzyActive;
+    if (!free && this.energy < 1) return { ok: false, reason: "energy" };
     if (!this.podReady(now)) return { ok: false, reason: "cooldown" };
     const cells = this.emptyCells();
     if (!cells.length) return { ok: false, reason: "full" };
     const tier = this.rollPodTier();
-    // prefer centre-biased empty cell
     const idx = cells[Math.floor(this._roll() * cells.length)];
     this.grid[idx] = tier;
-    this.energy -= 1;
+    if (!free) this.energy -= 1;
     this.podCharge -= 1;
-    if (this.podCharge <= 0) { this.podCooldownEnds = now + POD_COOLDOWN_SECONDS * 1000; }
-    return { ok: true, cell: idx, tier };
+    if (this.podCharge <= 0) this.podCooldownEnds = now + POD_COOLDOWN_SECONDS * 1000;
+    this._progress("spawn", 1);
+    return { ok: true, cell: idx, tier, free };
   }
 
-  // ---- merge ------------------------------------------------------------
+  // ---- merge + combo ----------------------------------------------------
   canMerge(from, to) {
     if (from === to) return false;
     const a = this.grid[from], b = this.grid[to];
     return a > 0 && a === b && a < MAX_TIER;
   }
 
-  tryMerge(from, to) {
+  comboMultiplier() { return clamp(this.combo, 1, COMBO_MAX); }
+
+  tryMerge(from, to, now = Date.now()) {
     if (!this.canMerge(from, to)) return { ok: false };
     const tier = this.grid[from];
+    // combo
+    if (now < this.comboExpires) this.combo += 1; else this.combo = 1;
+    this.comboExpires = now + this.comboWindowMs;
+    this.bestCombo = Math.max(this.bestCombo, this.combo);
+    const frenzyJust = this.combo >= FRENZY_COMBO && now >= this.frenzyUntil;
+    if (frenzyJust) this.frenzyUntil = now + FRENZY_MS;
+
+    const mult = this.comboMultiplier() * (this.frenzyActive ? 2 : 1) * this.mergeValueMult;
+    const coins = Math.round(TIERS[tier].value * mult);
+
     this.grid[to] = tier + 1;
     this.grid[from] = 0;
     this.bloom += BLOOM_PER_MERGE;
-    const coins = TIERS[tier].value;      // small coin for the merge itself
     this.coins += coins;
     this.addXp(1);
-    // level-up on bloom thresholds
     while (this.bloom >= this.level * BLOOM_THRESHOLD) { this.level += 1; }
-    return { ok: true, to, newTier: tier + 1, coins };
+
+    this._progress("merge", 1);
+    this._progress("tier", tier + 1);
+    this._progress("combo", this.combo);
+
+    return { ok: true, to, newTier: tier + 1, coins, combo: this.combo, frenzy: this.frenzyActive, frenzyJust };
   }
 
   addXp(n) { this.xp += n; const need = this.level * 10; if (this.xp >= need) { this.xp -= need; this.level += 1; } }
@@ -278,24 +393,19 @@ class GameModel {
 
   _makeOrder(band) {
     const bands = {
-      1: [[1, 3], [2, 1]],
-      2: [[2, 3], [3, 1]],
-      3: [[3, 3], [4, 1]],
-      4: [[4, 3], [5, 1]],
-      5: [[5, 3], [6, 1]],
-      6: [[6, 2], [7, 1]],
+      1: [[1, 3], [2, 1]], 2: [[2, 3], [3, 1]], 3: [[3, 3], [4, 1]],
+      4: [[4, 3], [5, 1]], 5: [[5, 3], [6, 1]], 6: [[6, 2], [7, 1]],
     };
     const items = (bands[band] || bands[1]).map(([tier, qty]) => ({ tier, qty }));
     const reward = Math.round(items.reduce((s, it) => s + TIERS[it.tier - 1].value * it.qty, 0) * 1.5);
     return { items, reward };
   }
 
-  genOrders(full = false) {
+  genOrders() {
     const band = this.currentBand();
     const offsets = [Math.max(1, band - 1), band, band, Math.min(6, band + 1)];
-    const need = full ? ORDER_SLOTS : ORDER_SLOTS;
     this.orders = [];
-    for (let i = 0; i < need; i++) this.orders.push(this._makeOrder(offsets[i % offsets.length]));
+    for (let i = 0; i < this.orderSlotCount; i++) this.orders.push(this._makeOrder(offsets[i % offsets.length]));
   }
 
   canDeliver(idx) {
@@ -303,18 +413,20 @@ class GameModel {
     return o.items.every(it => this.countTier(it.tier) >= it.qty);
   }
 
-  deliver(idx) {
+  deliver(idx, now = Date.now()) {
     if (!this.canDeliver(idx)) return { ok: false };
     const o = this.orders[idx];
-    // remove items
     for (const it of o.items) {
       let need = it.qty;
       for (let i = 0; i < this.grid.length && need > 0; i++) { if (this.grid[i] === it.tier) { this.grid[i] = 0; need--; } }
     }
-    this.coins += o.reward;
+    const bonus = this.frenzyActive ? 2 : 1;
+    const reward = o.reward * bonus;
+    this.coins += reward;
     this.addXp(3);
     this.orders[idx] = this._makeOrder(this.currentBand());
-    return { ok: true, reward: o.reward };
+    this._progress("order", 1);
+    return { ok: true, reward };
   }
 
   // ---- garden -----------------------------------------------------------
@@ -331,7 +443,7 @@ class GameModel {
   pendingOffline(now = Date.now()) {
     const hrs = Math.min((now - this.lastCollect) / 3600000, this.offlineCapHours);
     if (hrs <= 0) return 0;
-    return Math.floor(this.gardenRatePerHour() * hrs * 0.8);
+    return Math.floor(this.gardenRatePerHour() * hrs * this.gardenEfficiency);
   }
 
   collectGarden(now = Date.now(), mult = 1) {
@@ -341,19 +453,76 @@ class GameModel {
     return amt;
   }
 
-  // ---- upgrades ---------------------------------------------------------
-  upgradeCost(kind) {
-    const lvl = kind === "autoProducer" ? this.upgrades.autoProducer + 1 : this.upgrades[kind];
-    const base = { energyCap: 250, regen: 200, podLevel: 400, offlineCap: 300, autoProducer: 600 }[kind] || UPGRADE_BASE;
-    return Math.round(base * Math.pow(UPGRADE_MULT, lvl - 1));
+  // ---- reward chest (rewarded-ad gated) --------------------------------
+  chestReadyNow(now = Date.now()) { return this.chestReady; }
+
+  openChest(now = Date.now()) {
+    if (!this.chestReady) return { ok: false, reason: "notReady" };
+    this.chestReady = false;
+    this.nextChestAt = now + CHEST_INTERVAL_MS;
+    const coins = Math.round(CHEST.coinsMin + this._roll() * (CHEST.coinsMax - CHEST.coinsMin)) * (1 + (this.level - 1) * 0.15);
+    this.coins += Math.round(coins);
+    this.energy = Math.min(this.energyCap, this.energy + CHEST.energy);
+    let booster = null;
+    if (this._roll() < CHEST.boosterChance) {
+      booster = ["shovel", "mixer", "lucky"][Math.floor(this._roll() * 3)];
+      this.boosters[booster] = (this.boosters[booster] || 0) + 1;
+    }
+    this._progress("chest", 1);
+    return { ok: true, coins: Math.round(coins), energy: CHEST.energy, booster };
   }
 
+  useBooster(kind) {
+    if ((this.boosters[kind] || 0) <= 0) return { ok: false };
+    this.boosters[kind] -= 1;
+    if (kind === "shovel") { let low = -1, lt = 99; this.grid.forEach((t, i) => { if (t && t < lt) { lt = t; low = i; } }); if (low >= 0) this.grid[low] = 0; }
+    if (kind === "mixer") { const items = this.grid.filter(t => t); for (let i = items.length - 1; i > 0; i--) { const j = Math.floor(this._roll() * (i + 1)); [items[i], items[j]] = [items[j], items[i]]; } this.grid = new Array(GRID * GRID).fill(0); items.forEach((t, i) => this.grid[i] = t); }
+    if (kind === "lucky") { const cells = this.emptyCells(); if (cells.length) this.grid[cells[Math.floor(this._roll() * cells.length)]] = 4; }
+    return { ok: true };
+  }
+
+  // ---- missions ---------------------------------------------------------
+  _rollMissions(now = Date.now()) {
+    const day = this._dayKey(now);
+    this.daily.missionDay = day;
+    const seed = day % MISSION_POOL.length;
+    const picks = [0, 1, 2].map(k => MISSION_POOL[(seed + k * 2) % MISSION_POOL.length]);
+    this.missions = picks.map(m => ({ ...m, progress: 0, done: false, claimed: false }));
+  }
+
+  _progress(type, value) {
+    if (this.daily.missionDay !== this._dayKey()) this._rollMissions();
+    for (const m of this.missions) {
+      if (m.done || m.type !== type) continue;
+      if (type === "tier" || type === "combo") m.progress = Math.max(m.progress, value);
+      else m.progress += value;
+      if (m.progress >= m.target) { m.progress = m.target; m.done = true; }
+    }
+  }
+
+  claimMission(i) {
+    const m = this.missions[i];
+    if (!m || !m.done || m.claimed) return { ok: false };
+    m.claimed = true;
+    this.coins += m.reward;
+    return { ok: true, reward: m.reward };
+  }
+
+  // ---- upgrades ---------------------------------------------------------
+  upgradeCost(kind) {
+    const def = UPG[kind]; if (!def) return Infinity;
+    return Math.round(def.base * Math.pow(UPGRADE_MULT, this.upgrades[kind] - 1));
+  }
+  isMaxed(kind) { const def = UPG[kind]; return def ? this.upgrades[kind] >= def.max : true; }
+
   buyUpgrade(kind) {
+    const def = UPG[kind]; if (!def) return { ok: false };
+    if (this.isMaxed(kind)) return { ok: false, reason: "max" };
     const cost = this.upgradeCost(kind);
     if (this.coins < cost) return { ok: false, reason: "coins", cost };
-    if (kind === "podLevel" && this.upgrades.podLevel >= POD_MAX_LEVEL) return { ok: false, reason: "max" };
     this.coins -= cost;
     this.upgrades[kind] += 1;
+    if (kind === "orderSlots") this.genOrders();
     return { ok: true, cost };
   }
 
@@ -371,24 +540,37 @@ class GameModel {
       case "energy": this.energy = Math.min(this.energyCap, this.energy + ENERGY_REWARDED_AMOUNT); break;
       case "cooldown": this.podCooldownEnds = 0; this.podCharge = POD_CHARGE_START; break;
       case "luckyBloom": { const cells = this.emptyCells(); if (cells.length) this.grid[cells[Math.floor(this._roll() * cells.length)]] = 4; break; }
-      case "refreshOrders": this.genOrders(true); break;
-      case "doubleHarvest": break; // handled by caller via collectGarden(mult=2)
+      case "refreshOrders": this.genOrders(); break;
+      case "doubleHarvest": break;
     }
     return { ok: true };
   }
 
+  // ---- tick (call each frame) ------------------------------------------
+  tick(now = Date.now()) {
+    this.regenEnergy(now);
+    if (this.combo > 0 && now >= this.comboExpires) this.combo = 0;
+    if (!this.chestReady && now >= this.nextChestAt) this.chestReady = true;
+    if (this.upgrades.autoProducer > 1) {
+      const interval = Math.max(10, 40 - this.upgrades.autoProducer * 4);
+      this.autoCarry += 1;
+      if (this.autoCarry >= interval * 60) {
+        this.autoCarry = 0;
+        const cells = this.emptyCells();
+        if (cells.length) this.grid[cells[Math.floor(this._roll() * cells.length)]] = 1;
+      }
+    }
+  }
+
   // ---- serialisation ----------------------------------------------------
   serialize() {
-    return {
-      v: 1,
-      savedAt: Date.now(),
-      state: {
-        grid: this.grid, coins: this.coins, energy: this.energy, xp: this.xp, level: this.level,
-        bloom: this.bloom, plots: this.plots, upgrades: this.upgrades, podCharge: this.podCharge,
-        podCooldownEnds: this.podCooldownEnds, lastCollect: this.lastCollect, orders: this.orders,
-        daily: this.daily,
-      },
-    };
+    return { v: 2, savedAt: Date.now(), state: {
+      grid: this.grid, coins: this.coins, energy: this.energy, xp: this.xp, level: this.level,
+      bloom: this.bloom, plots: this.plots, upgrades: this.upgrades, podCharge: this.podCharge,
+      podCooldownEnds: this.podCooldownEnds, lastCollect: this.lastCollect, orders: this.orders,
+      daily: this.daily, missions: this.missions, boosters: this.boosters, bestCombo: this.bestCombo,
+      nextChestAt: this.nextChestAt,
+    } };
   }
 
   static deserialize(env) {
@@ -401,8 +583,11 @@ class GameModel {
       upgrades: Object.assign(m.upgrades, s.upgrades || {}), podCharge: s.podCharge ?? POD_CHARGE_START,
       podCooldownEnds: s.podCooldownEnds ?? 0, lastCollect: s.lastCollect ?? Date.now(),
       orders: (s.orders && s.orders.length) ? s.orders : m.orders, daily: s.daily || m.daily,
+      missions: (s.missions && s.missions.length) ? s.missions : m.missions,
+      boosters: s.boosters || m.boosters, bestCombo: s.bestCombo || 0, nextChestAt: s.nextChestAt || (Date.now() + CHEST_FIRST_MS),
     });
     m.lastTick = Date.now();
+    if (m.daily.missionDay !== m._dayKey()) m._rollMissions();
     return m;
   }
 }
@@ -448,15 +633,30 @@ const Platform = {
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => n >= 1000000 ? (n / 1000000).toFixed(2) + "M" : n >= 10000 ? (n / 1000).toFixed(1) + "k" : "" + n;
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const app = {
   model: new GameModel(),
-  canvas: null, ctx: null,
-  dpr: 1, cell: 0, pad: 0, boardPx: 0,
-  drag: null,               // {from, x, y}
-  tab: "merge",
-  autoTimer: 0,
+  canvas: null, ctx: null, dpr: 1, cell: 0, pad: 0,
+  drag: null, tab: "merge",
+  particles: [], floats: [], shakeUntil: 0, shakeMag: 0,
 };
+
+// ---------------------------------------------------------------- audio
+let actx = null;
+function blip(freq, dur = 0.09, type = "sine", gain = 0.05) {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!actx) actx = new AC();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.value = freq; o.connect(g); g.connect(actx.destination);
+    g.gain.value = gain;
+    o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur);
+    o.stop(actx.currentTime + dur);
+  } catch (e) { /* audio blocked until first tap */ }
+}
 
 // ---------------------------------------------------------------- bootstrap
 async function init() {
@@ -470,25 +670,24 @@ async function init() {
   window.addEventListener("resize", resize);
   resize();
 
-  // input
   app.canvas.addEventListener("pointerdown", onDown);
   app.canvas.addEventListener("pointermove", onMove);
   app.canvas.addEventListener("pointerup", onUp);
   app.canvas.addEventListener("pointercancel", () => { app.drag = null; render(); });
 
-  // buttons
   $("podBtn").addEventListener("click", doTapPod);
   $("tabMerge").addEventListener("click", () => setTab("merge"));
   $("tabGarden").addEventListener("click", () => setTab("garden"));
+  $("tabTasks").addEventListener("click", () => setTab("tasks"));
   $("tabUpgrades").addEventListener("click", () => setTab("upgrades"));
   $("collectBtn").addEventListener("click", () => doCollect(1));
   $("settingsBtn").addEventListener("click", showSettings);
+  $("chestBtn").addEventListener("click", onChest);
 
-  // welcome-back (offline earnings)
   const pending = app.model.pendingOffline();
   if (pending > 0) showWelcomeBack(pending);
 
-  buildOrders(); buildGarden(); buildUpgrades();
+  buildOrders(); buildGarden(); buildTasks(); buildUpgrades(); buildBoosters();
   setTab("merge");
   requestAnimationFrame(loop);
   Platform.sendMessage("game_ready");
@@ -498,22 +697,19 @@ async function init() {
 function resize() {
   const wrap = app.canvas.parentElement;
   let w = wrap.clientWidth, h = wrap.clientHeight;
-  if (!w || !h) { w = window.innerWidth || 360; h = Math.round((window.innerHeight || 640) * 0.55); }
-  const size = Math.max(200, Math.min(w, h));
+  if (!w || !h) { w = window.innerWidth || 360; h = Math.round((window.innerHeight || 640) * 0.5); }
+  const size = Math.max(180, Math.min(w, h));
   app.dpr = Math.min(window.devicePixelRatio || 1, 2);
   app.canvas.style.width = size + "px";
   app.canvas.style.height = size + "px";
   app.canvas.width = Math.round(size * app.dpr);
   app.canvas.height = Math.round(size * app.dpr);
   app.pad = size * 0.03;
-  app.boardPx = size - app.pad * 2;
-  app.cell = app.boardPx / GRID;
+  app.cell = (size - app.pad * 2) / GRID;
   render();
 }
-
 function cellAt(x, y) {
-  const col = Math.floor((x - app.pad) / app.cell);
-  const row = Math.floor((y - app.pad) / app.cell);
+  const col = Math.floor((x - app.pad) / app.cell), row = Math.floor((y - app.pad) / app.cell);
   if (col < 0 || row < 0 || col >= GRID || row >= GRID) return -1;
   return row * GRID + col;
 }
@@ -527,57 +723,72 @@ function render() {
   const ctx = app.ctx, S = app.canvas.width;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, S, S);
+  let ox = 0, oy = 0;
+  if (Date.now() < app.shakeUntil) { const m = app.shakeMag; ox = (Math.random() - 0.5) * m; oy = (Math.random() - 0.5) * m; }
   ctx.scale(app.dpr, app.dpr);
+  ctx.translate(ox, oy);
 
-  const g = app.model.grid;
-  const r = app.cell * 0.16;
-
+  const g = app.model.grid, r = app.cell * 0.16;
   for (let i = 0; i < g.length; i++) {
     const c = cellCenter(i);
-    const x = c.x - app.cell / 2 + app.cell * 0.06;
-    const y = c.y - app.cell / 2 + app.cell * 0.06;
-    const s = app.cell * 0.88;
-    // cell background
+    const x = c.x - app.cell / 2 + app.cell * 0.06, y = c.y - app.cell / 2 + app.cell * 0.06, s = app.cell * 0.88;
     roundRect(ctx, x, y, s, s, r * 0.8);
-    ctx.fillStyle = "rgba(255,255,255,0.06)";
-    ctx.fill();
-
+    ctx.fillStyle = "rgba(255,255,255,0.07)"; ctx.fill();
     if (g[i] > 0) {
-      const tier = TIERS[g[i] - 1];
+      const t = TIERS[g[i] - 1];
       roundRect(ctx, x, y, s, s, r);
-      ctx.fillStyle = tier.color;
-      ctx.fill();
-      ctx.lineWidth = Math.max(1, s * 0.03);
-      ctx.strokeStyle = "rgba(255,255,255,0.35)";
-      ctx.stroke();
-      ctx.font = `${s * 0.5}px system-ui, sans-serif`;
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(tier.glyph, c.x, c.y - s * 0.04);
-      ctx.font = `600 ${s * 0.2}px system-ui, sans-serif`;
-      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillStyle = t.color; ctx.fill();
+      ctx.lineWidth = Math.max(1, s * 0.03); ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.stroke();
+      ctx.font = `${s * 0.5}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(t.glyph, c.x, c.y - s * 0.04);
+      ctx.font = `600 ${s * 0.2}px system-ui, sans-serif`; ctx.fillStyle = "rgba(0,0,0,0.55)";
       ctx.fillText("T" + g[i], c.x, c.y + s * 0.32);
     }
   }
 
+  // particles
+  for (const p of app.particles) {
+    ctx.globalAlpha = Math.max(0, p.life / p.max);
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // floating text
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (const f of app.floats) {
+    ctx.globalAlpha = Math.max(0, f.life / f.max);
+    ctx.font = `800 ${f.size}px system-ui, sans-serif`;
+    ctx.fillStyle = f.color;
+    ctx.fillText(f.text, f.x, f.y);
+  }
+  ctx.globalAlpha = 1;
+
   // drag ghost
   if (app.drag && app.drag.tier) {
-    const tier = TIERS[app.drag.tier - 1];
     ctx.globalAlpha = 0.85;
     ctx.font = `${app.cell * 0.5}px system-ui, sans-serif`;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(tier.glyph, app.drag.x, app.drag.y);
+    ctx.fillText(TIERS[app.drag.tier - 1].glyph, app.drag.x, app.drag.y);
     ctx.globalAlpha = 1;
   }
 }
-
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
+  ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function burst(idx, tier) {
+  const c = cellCenter(idx), col = TIERS[Math.min(tier, MAX_TIER) - 1].color;
+  for (let i = 0; i < 12; i++) {
+    const a = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 3;
+    app.particles.push({ x: c.x, y: c.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 1, life: 32, max: 32, size: 2 + Math.random() * 3, color: col });
+  }
+}
+function floatText(idx, text, color) {
+  const c = cellCenter(idx);
+  app.floats.push({ x: c.x, y: c.y - app.cell * 0.2, text, color, life: 46, max: 46, size: Math.round(app.cell * 0.26) });
 }
 
 // ---------------------------------------------------------------- input
@@ -592,92 +803,98 @@ function onDown(e) {
 function onMove(e) {
   if (!app.drag) return;
   const rect = app.canvas.getBoundingClientRect();
-  app.drag.x = e.clientX - rect.left; app.drag.y = e.clientY - rect.top;
-  render();
+  app.drag.x = e.clientX - rect.left; app.drag.y = e.clientY - rect.top; render();
 }
 function onUp(e) {
   if (!app.drag) return;
   const rect = app.canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left, y = e.clientY - rect.top;
-  const to = cellAt(x, y);
-  const from = app.drag.from;
-  const tier = app.drag.tier;
-  app.drag = null;
+  const to = cellAt(e.clientX - rect.left, e.clientY - rect.top);
+  const from = app.drag.from, tier = app.drag.tier; app.drag = null;
 
   if (to < 0 || to === from) { render(); return; }
   if (app.model.canMerge(from, to)) {
     const res = app.model.tryMerge(from, to);
-    if (res.ok) { toast("+" + res.coins + " \u{1F4B0}"); refresh(); }
+    if (res.ok) {
+      burst(to, res.newTier);
+      floatText(to, "+" + res.coins, "#ffe066");
+      app.shakeUntil = Date.now() + 120; app.shakeMag = Math.min(10, 3 + res.combo);
+      blip(320 + res.newTier * 40, 0.09, "triangle", 0.06);
+      if (res.frenzyJust) { toast("\u{1F525} MERGE FRENZY! Double coins"); blip(660, 0.25, "sawtooth", 0.05); }
+      refresh();
+    }
   } else if (app.model.grid[to] === 0) {
-    // move to an empty cell
     app.model.grid[to] = tier; app.model.grid[from] = 0; refresh();
-  } else {
-    render();
-  }
+  } else render();
   checkBoardRest();
 }
 
 function doTapPod() {
   const r = app.model.tapPod();
   if (!r.ok) {
-    if (r.reason === "energy") toast("Out of energy \u2014 wait or use a boost");
+    if (r.reason === "energy") toast("Out of energy \u2014 wait, or use a boost");
     else if (r.reason === "cooldown") toast("Seed Pod is recharging\u2026");
     else if (r.reason === "full") { toast("Board is full"); checkBoardRest(); }
-    refresh();
-    return;
+    refresh(); return;
   }
+  blip(220, 0.05, "square", 0.04);
   refresh();
 }
 
 // ---------------------------------------------------------------- loop
-function loop(ts) {
+function loop() {
   const now = Date.now();
-  app.model.regenEnergy(now);
-
-  // auto-producer
-  if (app.model.upgrades.autoProducer > 0) {
-    app.autoTimer += 1;
-    const interval = Math.max(10, 30 - app.model.upgrades.autoProducer * 4);
-    if (app.autoTimer >= interval * 60) {
-      app.autoTimer = 0;
-      const cells = app.model.emptyCells();
-      if (cells.length) { app.model.grid[cells[Math.floor(Math.random() * cells.length)]] = 1; refresh(); }
-    }
-  }
-  updateHUD();
+  app.model.tick(now);
+  // advance effects
+  app.particles = app.particles.filter(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.18; p.life--; return p.life > 0; });
+  app.floats = app.floats.filter(f => { f.y -= 0.7; f.life--; return f.life > 0; });
+  updateHUD(); render();
   requestAnimationFrame(loop);
 }
 
-// ---------------------------------------------------------------- HUD / tabs
+// ---------------------------------------------------------------- HUD
 function updateHUD() {
   const m = app.model;
   $("coins").textContent = fmt(m.coins);
   $("energy").textContent = m.energy;
   $("energyCap").textContent = m.energyCap;
   $("level").textContent = m.level;
-  const bloomPct = Math.min(100, (m.bloom / (m.level * BLOOM_THRESHOLD)) * 100);
-  $("bloomFill").style.width = bloomPct + "%";
+  $("bloomFill").style.width = Math.min(100, (m.bloom / (m.level * BLOOM_THRESHOLD)) * 100) + "%";
   $("plotsCount").textContent = m.plotsUnlocked;
-  // pod state
+
+  // combo
+  const comboOn = m.comboActive;
+  $("comboWrap").style.visibility = comboOn ? "visible" : "hidden";
+  if (comboOn) {
+    $("comboVal").textContent = "COMBO \u00D7" + m.comboMultiplier();
+    const pct = Math.max(0, (m.comboExpires - Date.now()) / m.comboWindowMs) * 100;
+    $("comboFill").style.width = pct + "%";
+  }
+  // frenzy
+  $("frenzyBanner").style.display = m.frenzyActive ? "" : "none";
+  if (m.frenzyActive) $("frenzyTime").textContent = Math.ceil((m.frenzyUntil - Date.now()) / 1000) + "s";
+
+  // pod
   const ready = m.podReady(Date.now());
-  const podBtn = $("podBtn");
-  podBtn.disabled = m.energy < 1 || !ready;
-  if (ready) { $("podLabel").textContent = "Tap Seed Pod  (" + m.podCharge + ")"; }
+  $("podBtn").disabled = (!m.frenzyActive && m.energy < 1) || !ready;
+  if (ready) $("podLabel").textContent = (m.frenzyActive ? "FREE TAP \u2014 Frenzy! " : "Tap Seed Pod  ") + "(" + m.podCharge + ")";
   else { const s = Math.max(0, Math.ceil((m.podCooldownEnds - Date.now()) / 1000)); $("podLabel").textContent = "Recharging\u2026 " + s + "s"; }
+
+  // chest badge
+  $("chestBtn").classList.toggle("ready", m.chestReady);
 }
 
-function refresh() { buildOrders(); buildGarden(); buildUpgrades(); updateHUD(); render(); }
+function refresh() { buildOrders(); buildGarden(); buildTasks(); buildUpgrades(); buildBoosters(); updateHUD(); render(); }
 
 function setTab(tab) {
   app.tab = tab;
-  for (const t of ["merge", "garden", "upgrades"]) {
+  for (const t of ["merge", "garden", "tasks", "upgrades"]) {
     $("panel" + cap(t)).style.display = t === tab ? "" : "none";
     $("tab" + cap(t)).classList.toggle("active", t === tab);
   }
   if (tab === "garden") buildGarden();
+  if (tab === "tasks") buildTasks();
   if (tab === "upgrades") buildUpgrades();
 }
-const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 // ---------------------------------------------------------------- orders
 function buildOrders() {
@@ -686,13 +903,16 @@ function buildOrders() {
     const can = app.model.canDeliver(i);
     const div = document.createElement("div");
     div.className = "order" + (can ? " ready" : "");
-    div.innerHTML =
-      `<div class="order-items">${o.items.map(it =>
-        `<span class="chip">${TIERS[it.tier - 1].glyph} <b>${it.qty}</b></span>`).join("")}</div>
-       <button class="btn deliver" ${can ? "" : "disabled"}>${can ? "Deliver" : "\u2026"} +${o.reward}</button>`;
+    const items = o.items.map(it => {
+      const have = app.model.countTier(it.tier);
+      const ok = have >= it.qty;
+      return `<span class="chip ${ok ? "ok" : ""}">${TIERS[it.tier - 1].glyph}<b>${Math.min(have, it.qty)}/${it.qty}</b></span>`;
+    }).join("");
+    div.innerHTML = `<div class="order-items">${items}</div>
+      <button class="btn deliver" ${can ? "" : "disabled"}>${can ? "Deliver" : "…"} +${o.reward}</button>`;
     div.querySelector(".deliver").addEventListener("click", () => {
       const r = app.model.deliver(i);
-      if (r.ok) { toast("Order done! +" + r.reward + " \u{1F4B0}"); Platform.showInterstitial(); refresh(); checkBoardRest(); }
+      if (r.ok) { toast("Order done! +" + r.reward + " \u{1F4B0}"); blip(520, 0.12, "triangle", 0.06); Platform.showInterstitial(); refresh(); checkBoardRest(); }
     });
     el.appendChild(div);
   });
@@ -708,7 +928,7 @@ function buildGarden() {
     d.className = "plot" + (i >= unlocked ? " locked" : "") + (tier ? " planted" : "");
     if (i >= unlocked) d.innerHTML = "\u{1F512}";
     else if (tier) d.innerHTML = `<span class="glyph">${TIERS[tier - 1].glyph}</span><span class="rate">${fmt(gardenRate(tier))}/h</span>`;
-    else d.innerHTML = "<span class=\"plus\">+</span>";
+    else d.innerHTML = `<span class="plus">+</span>`;
     d.addEventListener("click", () => onPlot(i));
     el.appendChild(d);
   }
@@ -718,44 +938,100 @@ function buildGarden() {
 function onPlot(i) {
   if (i >= app.model.plotsUnlocked) { toast("Locked \u2014 keep merging to unlock"); return; }
   if (app.model.plots[i] !== 0) { toast("Already planted"); return; }
-  // plant the highest-tier item currently on the board (tier >= 2)
   let best = -1, bestTier = 1;
   app.model.grid.forEach((t, idx) => { if (t >= 2 && t > bestTier) { bestTier = t; best = idx; } });
   if (best < 0) { toast("Merge up to tier 2+ to plant"); return; }
   app.model.grid[best] = 0;
   const r = app.model.plant(i, bestTier);
-  if (r.ok) toast("Planted " + TIERS[bestTier - 1].name); else { toast("Can't plant"); }
+  if (r.ok) { toast("Planted " + TIERS[bestTier - 1].name); blip(440, 0.1, "sine", 0.05); } else toast("Can't plant");
   refresh();
 }
 function doCollect(mult) {
   const amt = app.model.collectGarden(Date.now(), mult);
-  if (amt > 0) toast("+" + fmt(amt) + " \u{1F4B0}");
+  if (amt > 0) { toast("+" + fmt(amt) + " \u{1F4B0}"); blip(600, 0.12, "triangle", 0.05); }
   refresh();
+}
+
+// ---------------------------------------------------------------- tasks
+function buildTasks() {
+  const el = $("missionsList"); el.innerHTML = "";
+  app.model.missions.forEach((m, i) => {
+    const pct = Math.min(100, (m.progress / m.target) * 100);
+    const d = document.createElement("div");
+    d.className = "upg mission" + (m.done && !m.claimed ? " ready" : "");
+    d.innerHTML = `<div style="flex:1">
+        <div class="upg-title">${m.text}</div>
+        <div class="mbar"><div class="mfill" style="width:${pct}%"></div></div>
+        <div class="upg-sub">${m.progress}/${m.target} \u00B7 +${m.reward} \u{1F4B0}</div>
+      </div>
+      <button class="btn buy" ${m.done && !m.claimed ? "" : "disabled"}>${m.claimed ? "Done" : m.done ? "Claim" : "\u2026"}</button>`;
+    d.querySelector(".buy").addEventListener("click", () => {
+      const r = app.model.claimMission(i);
+      if (r.ok) { toast("Mission complete! +" + r.reward + " \u{1F4B0}"); blip(700, 0.14, "triangle", 0.06); refresh(); }
+    });
+    el.appendChild(d);
+  });
 }
 
 // ---------------------------------------------------------------- upgrades
 function buildUpgrades() {
   const el = $("upgradesList"); el.innerHTML = "";
-  const defs = [
-    ["energyCap", "Energy capacity", "+25 max energy"],
-    ["regen", "Energy regen", "faster refill"],
-    ["podLevel", "Seed Pod", "better drops"],
-    ["offlineCap", "Garden offline cap", "+4h offline"],
-    ["autoProducer", "Auto-Producer", "free plants over time"],
-  ];
-  for (const [kind, title, sub] of defs) {
-    const cost = app.model.upgradeCost(kind);
-    const maxed = kind === "podLevel" && app.model.upgrades.podLevel >= POD_MAX_LEVEL;
+  for (const def of UPGRADES) {
+    const cost = app.model.upgradeCost(def.key);
+    const maxed = app.model.isMaxed(def.key);
+    const afford = app.model.coins >= cost;
+    const lvl = app.model.upgrades[def.key];
     const d = document.createElement("div");
     d.className = "upg";
-    d.innerHTML = `<div><div class="upg-title">${title}</div><div class="upg-sub">${sub}</div></div>
-      <button class="btn buy" ${maxed || app.model.coins < cost ? "disabled" : ""}>${maxed ? "MAX" : fmt(cost) + " \u{1F4B0}"}</button>`;
+    d.innerHTML = `<div><div class="upg-title">${def.title} <span class="lvl">Lv${lvl}</span></div>
+        <div class="upg-sub">${def.sub}</div></div>
+      <button class="btn buy ${afford && !maxed ? "ok" : ""}" ${maxed || !afford ? "disabled" : ""}>${maxed ? "MAX" : fmt(cost) + " \u{1F4B0}"}</button>`;
     d.querySelector(".buy").addEventListener("click", () => {
-      const r = app.model.buyUpgrade(kind);
-      if (r.ok) { toast(title + " upgraded"); refresh(); } else toast("Not enough coins");
+      const r = app.model.buyUpgrade(def.key);
+      if (r.ok) { toast(def.title + " upgraded"); blip(560, 0.1, "sine", 0.05); refresh(); } else toast("Not enough coins");
     });
     el.appendChild(d);
   }
+}
+
+// ---------------------------------------------------------------- boosters
+function buildBoosters() {
+  const el = $("boosters"); if (!el) return; el.innerHTML = "";
+  const defs = [["shovel", "\u{1FAA3}", "Shovel"], ["mixer", "\u{1F500}", "Mixer"], ["lucky", "\u{1F31F}", "Lucky"]];
+  for (const [k, icon, name] of defs) {
+    const n = app.model.boosters[k] || 0;
+    const b = document.createElement("button");
+    b.className = "booster"; b.disabled = n <= 0;
+    b.innerHTML = `${icon}<span class="cnt">${n}</span>`;
+    b.title = name;
+    b.addEventListener("click", () => { const r = app.model.useBooster(k); if (r.ok) { toast(name + " used"); refresh(); } });
+    el.appendChild(b);
+  }
+}
+
+// ---------------------------------------------------------------- chest
+function onChest() {
+  const m = app.model;
+  if (!m.chestReady) { toast("No chest right now \u2014 keep playing"); return; }
+  const left = m.rewardedLeft("chest");
+  const alt = REWARDED.chest.coinsAlt;
+  modal("Reward Chest \u{1F381}", "Open it for coins, energy and maybe a booster.", [
+    { label: left > 0 ? "Open \u2014 watch a short ad" : "Ad limit reached today", primary: left > 0, onClick: async () => {
+        if (m.rewardedLeft("chest") <= 0) return;
+        const ok = await Platform.showRewarded();
+        if (ok) { m.rewardedUse("chest"); const r = m.openChest(); if (r.ok) chestRewardToast(r); }
+        closeModal(); refresh();
+      } },
+    { label: `Open with ${alt} \u{1F4B0}`, onClick: () => {
+        if (m.coins < alt) { toast("Not enough coins"); return; }
+        m.coins -= alt; const r = m.openChest(); if (r.ok) chestRewardToast(r); closeModal(); refresh();
+      } },
+    { label: "Later", onClick: closeModal },
+  ]);
+}
+function chestRewardToast(r) {
+  blip(760, 0.16, "triangle", 0.06);
+  toast(`Chest: +${fmt(r.coins)} \u{1F4B0}, +${r.energy} \u26A1${r.booster ? ", +1 " + r.booster : ""}`);
 }
 
 // ---------------------------------------------------------------- board-rest
@@ -766,32 +1042,20 @@ function hasMerge() {
 }
 function checkBoardRest() {
   const m = app.model;
-  if (!m.isFull()) return;
-  if (hasMerge()) return;
-  showRestPanel();
-}
-function showRestPanel() {
-  modal("The garden is resting", "No merges left. Clear space to keep going.", [
-    { label: "Shovel \u2013 remove one (60 \u{1F4B0})", primary: true, onClick: () => {
-        let low = -1, lt = 99; m_gridForEach((t, i) => { if (t && t < lt) { lt = t; low = i; } });
-        if (low >= 0) app.model.grid[low] = 0; refresh(); closeModal();
-      } },
-    { label: "Mixer \u2013 shuffle the board", onClick: () => {
-        const items = app.model.grid.filter(t => t); shuffle(items);
-        app.model.grid = new Array(36).fill(0);
-        for (let i = 0; i < items.length; i++) app.model.grid[i] = items[i];
+  if (!m.isFull() || hasMerge()) return;
+  modal("The garden is resting", "No merges left. Clear some space to keep going.", [
+    { label: "Shovel \u2014 remove one (" + (m.boosters.shovel > 0 ? "free" : "60 \u{1F4B0}") + ")", primary: true, onClick: () => {
+        if (m.boosters.shovel > 0) m.useBooster("shovel"); else if (m.coins >= 60) { m.coins -= 60; m.useBooster("shovel"); }
         refresh(); closeModal();
       } },
-    { label: "Watch a boost (rewarded)", onClick: async () => {
-        const ok = await Platform.showRewarded();
-        if (ok) { app.model.grantRewarded("luckyBloom"); refresh(); }
-        closeModal();
+    { label: "Mixer \u2014 shuffle the board", onClick: () => {
+        if (m.boosters.mixer > 0) m.useBooster("mixer"); else if (m.coins >= 60) { m.coins -= 60; m.boosters.mixer = 1; m.useBooster("mixer"); }
+        refresh(); closeModal();
       } },
+    { label: "Watch a boost (rewarded)", onClick: async () => { const ok = await Platform.showRewarded(); if (ok) { m.grantRewarded("luckyBloom"); refresh(); } closeModal(); } },
     { label: "Later", onClick: closeModal },
   ]);
 }
-const m_gridForEach = (fn) => app.model.grid.forEach((t, i) => fn(t, i));
-function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } }
 
 // ---------------------------------------------------------------- welcome back
 function showWelcomeBack(pending) {
@@ -822,10 +1086,10 @@ function closeModal() { $("modalRoot").innerHTML = ""; }
 let toastTimer = null;
 function toast(msg) {
   const t = $("toast"); t.textContent = msg; t.classList.add("show");
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 1400);
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 1600);
 }
 function showSettings() {
-  modal("Settings", "Merge & Bloom \u2014 v1.0", [
+  modal("Settings", "Merge & Bloom v2 \u2014 best combo \u00D7" + (app.model.bestCombo || 0), [
     { label: "Reset progress", onClick: () => { if (confirm("Erase all progress?")) { localStorage.removeItem("mb_save"); location.reload(); } } },
     { label: "Close", primary: true, onClick: closeModal },
   ]);
@@ -833,9 +1097,7 @@ function showSettings() {
 
 // ---------------------------------------------------------------- persistence
 setInterval(() => Platform.setSave(app.model.serialize()), 15000);
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden") Platform.setSave(app.model.serialize());
-});
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") Platform.setSave(app.model.serialize()); });
 
 window.addEventListener("load", init);
 

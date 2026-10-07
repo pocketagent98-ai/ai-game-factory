@@ -15,6 +15,16 @@ A **portrait HTML5 merge-2 puzzle with an idle “grow-a-garden” meta** — bu
 - **Economy:** energy (regenerates, soft-paced), coins (orders + garden), and upgrades (energy cap, regen, seed pod, offline cap, auto-producer).
 - **Ads:** rewarded video (opt-in boosts) + interstitials (at natural breaks, platform-paced). The standalone build simulates ads; the portal build swaps in the **Playgama Bridge** SDK (one integration for all six portals).
 
+## New in v2 — more fun, more juice, ad-gated rewards
+- **Combo system** — merge fast to chain a multiplier (×1…×8); the combo bar decays, so speed matters.
+- **Merge Frenzy** — hit a ×5 combo to trigger a 15 s frenzy: **double coins** and **free Seed Pod taps**.
+- **Juice** — particle bursts, floating "+coins", screen shake, and rising sound blips on every merge.
+- **Reward Chest** — a chest appears regularly; **watch a short ad to open it** (coins + energy + maybe a booster), or pay coins instead. Daily ad cap applies.
+- **Daily missions** — 3 rotating tasks (merges, orders, combos, tiers, chests) with claimable rewards.
+- **Boosters** — Shovel, Mixer and Lucky, earned from chests.
+- **10 upgrades** — energy cap, regen, seed pod, merge value, combo window, order slots, lucky drop, garden efficiency, offline cap, auto-producer.
+- **Better orders & UI** — live item progress (n/needed), clearer buttons, upgrade levels, and affordability dimming.
+
 ## Why this concept
 
 Chosen from a deep market study of the seven portals: **merge is the fastest-growing casual mechanic**, web demand is proven but high-quality web merge supply is thin, and the merge + idle-garden hybrid fits the web rewarded-ad economy perfectly. Full evidence in the companion research repo (see below).

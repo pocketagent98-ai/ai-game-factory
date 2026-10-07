@@ -2,6 +2,7 @@
 import * as C from "./config.js";
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const UPG = Object.fromEntries(C.UPGRADES.map(u => [u.key, u]));
 
 export class GameModel {
   constructor() { this.reset(); }
@@ -14,16 +15,32 @@ export class GameModel {
     this.level = 1;
     this.bloom = 0;
     this.orders = [];
-    this.plots = new Array(12).fill(0);   // 0 = empty, else planted tier
-    this.upgrades = { energyCap: 1, regen: 1, podLevel: 1, offlineCap: 1, autoProducer: 0 };
+    this.plots = new Array(12).fill(0);
+    this.upgrades = {
+      energyCap: 1, regen: 1, podLevel: 1, mergeValue: 1, comboWindow: 1,
+      orderSlots: 1, luckyDrop: 1, gardenEff: 1, offlineCap: 1, autoProducer: 1,
+    };
     this.podCharge = C.POD_CHARGE_START;
     this.podCooldownEnds = 0;
-    this.energyCarry = 0;                 // fractional seconds toward next energy
+    this.energyCarry = 0;
     this.autoCarry = 0;
     this.lastTick = Date.now();
     this.lastCollect = Date.now();
-    this.daily = { rewardedCounts: {}, dayKey: this._dayKey() };
+
+    // fun systems
+    this.combo = 0;
+    this.comboExpires = 0;
+    this.bestCombo = 0;
+    this.frenzyUntil = 0;
+    this.chestReady = false;
+    this.nextChestAt = Date.now() + C.CHEST_FIRST_MS;
+    this.boosters = { shovel: 1, mixer: 1, lucky: 1 };
+
+    const day = this._dayKey();
+    this.daily = { rewardedCounts: {}, dayKey: day, missionDay: day };
+    this.missions = [];
     this.genOrders(true);
+    this._rollMissions();
   }
 
   // ---- helpers ----------------------------------------------------------
@@ -35,6 +52,13 @@ export class GameModel {
   get podLevel() { return clamp(this.upgrades.podLevel, 1, C.POD_MAX_LEVEL); }
   get offlineCapHours() { return Math.min(C.OFFLINE_CAP_MAX, C.OFFLINE_CAP_HOURS_START + (this.upgrades.offlineCap - 1) * 4); }
   get plotsUnlocked() { return clamp(2 + Math.floor(this.level / 2) + Math.floor(this.bloom / C.BLOOM_THRESHOLD), 2, 12); }
+  get mergeValueMult() { return 1 + 0.15 * (this.upgrades.mergeValue - 1); }
+  get comboWindowMs() { return C.COMBO_WINDOW_MS + (this.upgrades.comboWindow - 1) * 300; }
+  get orderSlotCount() { return C.ORDER_SLOTS + (this.upgrades.orderSlots - 1); }
+  get luckyChance() { return 0.05 * (this.upgrades.luckyDrop - 1); }
+  get gardenEfficiency() { return Math.min(1.3, 0.8 + (this.upgrades.gardenEff - 1) * 0.1); }
+  get frenzyActive() { return Date.now() < this.frenzyUntil; }
+  get comboActive() { return Date.now() < this.comboExpires && this.combo > 0; }
 
   emptyCells() { const out = []; for (let i = 0; i < this.grid.length; i++) if (this.grid[i] === 0) out.push(i); return out; }
   isFull() { return this.emptyCells().length === 0; }
@@ -60,45 +84,62 @@ export class GameModel {
 
   rollPodTier() {
     const table = C.POD_TABLES[this.podLevel] || C.POD_TABLES[1];
-    let r = this._roll(), acc = 0;
-    for (const [tier, p] of table) { acc += p; if (r <= acc) return tier; }
-    return table[0][0];
+    let r = this._roll(), acc = 0, tier = table[0][0];
+    for (const [t, p] of table) { acc += p; if (r <= acc) { tier = t; break; } }
+    if (this.luckyChance > 0 && this._roll() < this.luckyChance) tier = Math.min(C.MAX_TIER, tier + 1);
+    return tier;
   }
 
   tapPod(now = Date.now()) {
-    if (this.energy < 1) return { ok: false, reason: "energy" };
+    const free = this.frenzyActive;
+    if (!free && this.energy < 1) return { ok: false, reason: "energy" };
     if (!this.podReady(now)) return { ok: false, reason: "cooldown" };
     const cells = this.emptyCells();
     if (!cells.length) return { ok: false, reason: "full" };
     const tier = this.rollPodTier();
-    // prefer centre-biased empty cell
     const idx = cells[Math.floor(this._roll() * cells.length)];
     this.grid[idx] = tier;
-    this.energy -= 1;
+    if (!free) this.energy -= 1;
     this.podCharge -= 1;
-    if (this.podCharge <= 0) { this.podCooldownEnds = now + C.POD_COOLDOWN_SECONDS * 1000; }
-    return { ok: true, cell: idx, tier };
+    if (this.podCharge <= 0) this.podCooldownEnds = now + C.POD_COOLDOWN_SECONDS * 1000;
+    this._progress("spawn", 1);
+    return { ok: true, cell: idx, tier, free };
   }
 
-  // ---- merge ------------------------------------------------------------
+  // ---- merge + combo ----------------------------------------------------
   canMerge(from, to) {
     if (from === to) return false;
     const a = this.grid[from], b = this.grid[to];
     return a > 0 && a === b && a < C.MAX_TIER;
   }
 
-  tryMerge(from, to) {
+  comboMultiplier() { return clamp(this.combo, 1, C.COMBO_MAX); }
+
+  tryMerge(from, to, now = Date.now()) {
     if (!this.canMerge(from, to)) return { ok: false };
     const tier = this.grid[from];
+    // combo
+    if (now < this.comboExpires) this.combo += 1; else this.combo = 1;
+    this.comboExpires = now + this.comboWindowMs;
+    this.bestCombo = Math.max(this.bestCombo, this.combo);
+    const frenzyJust = this.combo >= C.FRENZY_COMBO && now >= this.frenzyUntil;
+    if (frenzyJust) this.frenzyUntil = now + C.FRENZY_MS;
+
+    const mult = this.comboMultiplier() * (this.frenzyActive ? 2 : 1) * this.mergeValueMult;
+    const coins = Math.round(C.TIERS[tier].value * mult);
+
     this.grid[to] = tier + 1;
     this.grid[from] = 0;
     this.bloom += C.BLOOM_PER_MERGE;
-    const coins = C.TIERS[tier].value;      // small coin for the merge itself
     this.coins += coins;
     this.addXp(1);
-    // level-up on bloom thresholds
     while (this.bloom >= this.level * C.BLOOM_THRESHOLD) { this.level += 1; }
-    return { ok: true, to, newTier: tier + 1, coins };
+
+    this._progress("merge", 1);
+    this._progress("tier", tier + 1);
+    this._progress("combo", this.combo);
+
+    return { ok: true, to, newTier: tier + 1, coins, combo: this.combo, frenzy: this.frenzyActive, frenzyJust };
   }
 
   addXp(n) { this.xp += n; const need = this.level * 10; if (this.xp >= need) { this.xp -= need; this.level += 1; } }
@@ -108,24 +149,19 @@ export class GameModel {
 
   _makeOrder(band) {
     const bands = {
-      1: [[1, 3], [2, 1]],
-      2: [[2, 3], [3, 1]],
-      3: [[3, 3], [4, 1]],
-      4: [[4, 3], [5, 1]],
-      5: [[5, 3], [6, 1]],
-      6: [[6, 2], [7, 1]],
+      1: [[1, 3], [2, 1]], 2: [[2, 3], [3, 1]], 3: [[3, 3], [4, 1]],
+      4: [[4, 3], [5, 1]], 5: [[5, 3], [6, 1]], 6: [[6, 2], [7, 1]],
     };
     const items = (bands[band] || bands[1]).map(([tier, qty]) => ({ tier, qty }));
     const reward = Math.round(items.reduce((s, it) => s + C.TIERS[it.tier - 1].value * it.qty, 0) * 1.5);
     return { items, reward };
   }
 
-  genOrders(full = false) {
+  genOrders() {
     const band = this.currentBand();
     const offsets = [Math.max(1, band - 1), band, band, Math.min(6, band + 1)];
-    const need = full ? C.ORDER_SLOTS : C.ORDER_SLOTS;
     this.orders = [];
-    for (let i = 0; i < need; i++) this.orders.push(this._makeOrder(offsets[i % offsets.length]));
+    for (let i = 0; i < this.orderSlotCount; i++) this.orders.push(this._makeOrder(offsets[i % offsets.length]));
   }
 
   canDeliver(idx) {
@@ -133,18 +169,20 @@ export class GameModel {
     return o.items.every(it => this.countTier(it.tier) >= it.qty);
   }
 
-  deliver(idx) {
+  deliver(idx, now = Date.now()) {
     if (!this.canDeliver(idx)) return { ok: false };
     const o = this.orders[idx];
-    // remove items
     for (const it of o.items) {
       let need = it.qty;
       for (let i = 0; i < this.grid.length && need > 0; i++) { if (this.grid[i] === it.tier) { this.grid[i] = 0; need--; } }
     }
-    this.coins += o.reward;
+    const bonus = this.frenzyActive ? 2 : 1;
+    const reward = o.reward * bonus;
+    this.coins += reward;
     this.addXp(3);
     this.orders[idx] = this._makeOrder(this.currentBand());
-    return { ok: true, reward: o.reward };
+    this._progress("order", 1);
+    return { ok: true, reward };
   }
 
   // ---- garden -----------------------------------------------------------
@@ -161,7 +199,7 @@ export class GameModel {
   pendingOffline(now = Date.now()) {
     const hrs = Math.min((now - this.lastCollect) / 3600000, this.offlineCapHours);
     if (hrs <= 0) return 0;
-    return Math.floor(this.gardenRatePerHour() * hrs * 0.8);
+    return Math.floor(this.gardenRatePerHour() * hrs * this.gardenEfficiency);
   }
 
   collectGarden(now = Date.now(), mult = 1) {
@@ -171,19 +209,76 @@ export class GameModel {
     return amt;
   }
 
-  // ---- upgrades ---------------------------------------------------------
-  upgradeCost(kind) {
-    const lvl = kind === "autoProducer" ? this.upgrades.autoProducer + 1 : this.upgrades[kind];
-    const base = { energyCap: 250, regen: 200, podLevel: 400, offlineCap: 300, autoProducer: 600 }[kind] || C.UPGRADE_BASE;
-    return Math.round(base * Math.pow(C.UPGRADE_MULT, lvl - 1));
+  // ---- reward chest (rewarded-ad gated) --------------------------------
+  chestReadyNow(now = Date.now()) { return this.chestReady; }
+
+  openChest(now = Date.now()) {
+    if (!this.chestReady) return { ok: false, reason: "notReady" };
+    this.chestReady = false;
+    this.nextChestAt = now + C.CHEST_INTERVAL_MS;
+    const coins = Math.round(C.CHEST.coinsMin + this._roll() * (C.CHEST.coinsMax - C.CHEST.coinsMin)) * (1 + (this.level - 1) * 0.15);
+    this.coins += Math.round(coins);
+    this.energy = Math.min(this.energyCap, this.energy + C.CHEST.energy);
+    let booster = null;
+    if (this._roll() < C.CHEST.boosterChance) {
+      booster = ["shovel", "mixer", "lucky"][Math.floor(this._roll() * 3)];
+      this.boosters[booster] = (this.boosters[booster] || 0) + 1;
+    }
+    this._progress("chest", 1);
+    return { ok: true, coins: Math.round(coins), energy: C.CHEST.energy, booster };
   }
 
+  useBooster(kind) {
+    if ((this.boosters[kind] || 0) <= 0) return { ok: false };
+    this.boosters[kind] -= 1;
+    if (kind === "shovel") { let low = -1, lt = 99; this.grid.forEach((t, i) => { if (t && t < lt) { lt = t; low = i; } }); if (low >= 0) this.grid[low] = 0; }
+    if (kind === "mixer") { const items = this.grid.filter(t => t); for (let i = items.length - 1; i > 0; i--) { const j = Math.floor(this._roll() * (i + 1)); [items[i], items[j]] = [items[j], items[i]]; } this.grid = new Array(C.GRID * C.GRID).fill(0); items.forEach((t, i) => this.grid[i] = t); }
+    if (kind === "lucky") { const cells = this.emptyCells(); if (cells.length) this.grid[cells[Math.floor(this._roll() * cells.length)]] = 4; }
+    return { ok: true };
+  }
+
+  // ---- missions ---------------------------------------------------------
+  _rollMissions(now = Date.now()) {
+    const day = this._dayKey(now);
+    this.daily.missionDay = day;
+    const seed = day % C.MISSION_POOL.length;
+    const picks = [0, 1, 2].map(k => C.MISSION_POOL[(seed + k * 2) % C.MISSION_POOL.length]);
+    this.missions = picks.map(m => ({ ...m, progress: 0, done: false, claimed: false }));
+  }
+
+  _progress(type, value) {
+    if (this.daily.missionDay !== this._dayKey()) this._rollMissions();
+    for (const m of this.missions) {
+      if (m.done || m.type !== type) continue;
+      if (type === "tier" || type === "combo") m.progress = Math.max(m.progress, value);
+      else m.progress += value;
+      if (m.progress >= m.target) { m.progress = m.target; m.done = true; }
+    }
+  }
+
+  claimMission(i) {
+    const m = this.missions[i];
+    if (!m || !m.done || m.claimed) return { ok: false };
+    m.claimed = true;
+    this.coins += m.reward;
+    return { ok: true, reward: m.reward };
+  }
+
+  // ---- upgrades ---------------------------------------------------------
+  upgradeCost(kind) {
+    const def = UPG[kind]; if (!def) return Infinity;
+    return Math.round(def.base * Math.pow(C.UPGRADE_MULT, this.upgrades[kind] - 1));
+  }
+  isMaxed(kind) { const def = UPG[kind]; return def ? this.upgrades[kind] >= def.max : true; }
+
   buyUpgrade(kind) {
+    const def = UPG[kind]; if (!def) return { ok: false };
+    if (this.isMaxed(kind)) return { ok: false, reason: "max" };
     const cost = this.upgradeCost(kind);
     if (this.coins < cost) return { ok: false, reason: "coins", cost };
-    if (kind === "podLevel" && this.upgrades.podLevel >= C.POD_MAX_LEVEL) return { ok: false, reason: "max" };
     this.coins -= cost;
     this.upgrades[kind] += 1;
+    if (kind === "orderSlots") this.genOrders();
     return { ok: true, cost };
   }
 
@@ -201,24 +296,37 @@ export class GameModel {
       case "energy": this.energy = Math.min(this.energyCap, this.energy + C.ENERGY_REWARDED_AMOUNT); break;
       case "cooldown": this.podCooldownEnds = 0; this.podCharge = C.POD_CHARGE_START; break;
       case "luckyBloom": { const cells = this.emptyCells(); if (cells.length) this.grid[cells[Math.floor(this._roll() * cells.length)]] = 4; break; }
-      case "refreshOrders": this.genOrders(true); break;
-      case "doubleHarvest": break; // handled by caller via collectGarden(mult=2)
+      case "refreshOrders": this.genOrders(); break;
+      case "doubleHarvest": break;
     }
     return { ok: true };
   }
 
+  // ---- tick (call each frame) ------------------------------------------
+  tick(now = Date.now()) {
+    this.regenEnergy(now);
+    if (this.combo > 0 && now >= this.comboExpires) this.combo = 0;
+    if (!this.chestReady && now >= this.nextChestAt) this.chestReady = true;
+    if (this.upgrades.autoProducer > 1) {
+      const interval = Math.max(10, 40 - this.upgrades.autoProducer * 4);
+      this.autoCarry += 1;
+      if (this.autoCarry >= interval * 60) {
+        this.autoCarry = 0;
+        const cells = this.emptyCells();
+        if (cells.length) this.grid[cells[Math.floor(this._roll() * cells.length)]] = 1;
+      }
+    }
+  }
+
   // ---- serialisation ----------------------------------------------------
   serialize() {
-    return {
-      v: 1,
-      savedAt: Date.now(),
-      state: {
-        grid: this.grid, coins: this.coins, energy: this.energy, xp: this.xp, level: this.level,
-        bloom: this.bloom, plots: this.plots, upgrades: this.upgrades, podCharge: this.podCharge,
-        podCooldownEnds: this.podCooldownEnds, lastCollect: this.lastCollect, orders: this.orders,
-        daily: this.daily,
-      },
-    };
+    return { v: 2, savedAt: Date.now(), state: {
+      grid: this.grid, coins: this.coins, energy: this.energy, xp: this.xp, level: this.level,
+      bloom: this.bloom, plots: this.plots, upgrades: this.upgrades, podCharge: this.podCharge,
+      podCooldownEnds: this.podCooldownEnds, lastCollect: this.lastCollect, orders: this.orders,
+      daily: this.daily, missions: this.missions, boosters: this.boosters, bestCombo: this.bestCombo,
+      nextChestAt: this.nextChestAt,
+    } };
   }
 
   static deserialize(env) {
@@ -231,8 +339,11 @@ export class GameModel {
       upgrades: Object.assign(m.upgrades, s.upgrades || {}), podCharge: s.podCharge ?? C.POD_CHARGE_START,
       podCooldownEnds: s.podCooldownEnds ?? 0, lastCollect: s.lastCollect ?? Date.now(),
       orders: (s.orders && s.orders.length) ? s.orders : m.orders, daily: s.daily || m.daily,
+      missions: (s.missions && s.missions.length) ? s.missions : m.missions,
+      boosters: s.boosters || m.boosters, bestCombo: s.bestCombo || 0, nextChestAt: s.nextChestAt || (Date.now() + C.CHEST_FIRST_MS),
     });
     m.lastTick = Date.now();
+    if (m.daily.missionDay !== m._dayKey()) m._rollMissions();
     return m;
   }
 }

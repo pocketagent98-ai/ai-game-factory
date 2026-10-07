@@ -86,5 +86,65 @@ t("rewarded daily caps enforced", () => {
   assert.equal(ok, C.REWARDED.energy.cap);
 });
 
+// ---- fun systems ----
+t("combo builds and multiplies merge coins", () => {
+  const m = new GameModel(); const now = Date.now();
+  m.grid[0]=3; m.grid[1]=3;
+  const r1 = m.tryMerge(0,1,now);           // combo 1
+  m.grid[2]=3; m.grid[3]=3;
+  const r2 = m.tryMerge(2,3,now+100);       // combo 2 -> more coins
+  assert.equal(r1.combo,1); assert.equal(r2.combo,2); assert.ok(r2.coins > r1.coins);
+});
+
+t("reaching frenzy combo activates frenzy", () => {
+  const m = new GameModel(); const now = Date.now();
+  for (let i=0;i<C.FRENZY_COMBO;i++){ m.grid[i*2]=3; m.grid[i*2+1]=3; m.tryMerge(i*2,i*2+1,now+i*10); }
+  assert.ok(m.frenzyActive);
+});
+
+t("pod taps are free during frenzy", () => {
+  const m = new GameModel(); m.frenzyUntil = Date.now()+10000; const e0=m.energy;
+  m.tapPod(Date.now()); assert.equal(m.energy, e0);
+});
+
+t("combo expires after the window", () => {
+  const m = new GameModel(); const now = Date.now();
+  m.grid[0]=3; m.grid[1]=3; m.tryMerge(0,1,now);
+  m.tick(now + m.comboWindowMs + 50);
+  assert.equal(m.combo, 0);
+});
+
+t("reward chest becomes ready and pays out once", () => {
+  const m = new GameModel(); m.nextChestAt = Date.now()-1;
+  m.tick(Date.now()); assert.ok(m.chestReady);
+  const c0=m.coins; const r=m.openChest(); assert.ok(r.ok); assert.ok(m.coins>c0);
+  assert.equal(m.openChest().ok, false);
+});
+
+t("missions progress and can be claimed", () => {
+  const m = new GameModel();
+  const mm = m.missions.find(x=>x.type==="merge") || m.missions[0];
+  mm.type="merge"; mm.target=1; mm.progress=0; mm.done=false; mm.claimed=false;
+  m._progress("merge",1);
+  assert.ok(mm.done);
+  const c0=m.coins; const r=m.claimMission(m.missions.indexOf(mm));
+  assert.ok(r.ok); assert.ok(m.coins>c0); assert.equal(m.claimMission(m.missions.indexOf(mm)).ok,false);
+});
+
+t("boosters are consumable", () => {
+  const m = new GameModel(); m.grid[5]=2;
+  assert.equal(m.boosters.shovel,1);
+  assert.ok(m.useBooster("shovel").ok); assert.equal(m.boosters.shovel,0);
+  assert.equal(m.useBooster("shovel").ok,false);
+});
+
+t("new upgrades raise their effects", () => {
+  const m = new GameModel(); m.coins=1e9;
+  const before = m.mergeValueMult; m.buyUpgrade("mergeValue");
+  assert.ok(m.mergeValueMult > before);
+  const slots = m.orderSlotCount; m.buyUpgrade("orderSlots");
+  assert.ok(m.orderSlotCount > slots); assert.equal(m.orders.length, m.orderSlotCount);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -3,26 +3,19 @@
 import fs from "node:fs";
 
 const read = (p) => fs.readFileSync(new URL(p, import.meta.url), "utf8");
-
-// --- transform the ES modules into one classic script -----------------------
 const stripExport = (s) => s.replace(/^\s*export\s+/gm, "");
 
-let config = stripExport(read("./js/config.js"));
-
-let model = stripExport(read("./js/model.js"))
-  .replace(/^\s*import \* as C from "\.\/config\.js";\s*$/m, "")
-  .replace(/\bC\./g, "");
-
-let platform = stripExport(read("./js/platform.js"));
-
-let game = read("./js/game.js")
+const config = stripExport(read("./js/config.js"));
+const model = stripExport(read("./js/model.js"))
+  .replace(/^\s*import \* as C from "\.\/config\.js";\s*$/m, "").replace(/\bC\./g, "");
+const platform = stripExport(read("./js/platform.js"));
+const game = read("./js/game.js")
   .replace(/^\s*import \* as C from "\.\/config\.js";\s*$/m, "")
   .replace(/^\s*import \{ GameModel \} from "\.\/model\.js";\s*$/m, "")
   .replace(/^\s*import \{ Platform \} from "\.\/platform\.js";\s*$/m, "")
-  .replace(/\bC\./g, "");           // C.TIERS -> TIERS, C.GRID -> GRID, ...
+  .replace(/\bC\./g, "");
 
 const bundle = `(function(){\n"use strict";\n${config}\n${model}\n${platform}\n${game}\n})();`;
-
 const css = read("./css/style.css");
 
 const html = `<!DOCTYPE html>
@@ -54,9 +47,16 @@ ${css}
     <div class="bloom-bar"><div id="bloomFill" class="bloom-fill"></div></div>
   </div>
 
+  <div id="comboWrap" class="combo-wrap" style="visibility:hidden">
+    <span id="comboVal" class="combo-val">COMBO \u00D71</span>
+    <div class="combo-bar"><div id="comboFill" class="combo-fill"></div></div>
+  </div>
+  <div id="frenzyBanner" class="frenzy" style="display:none">\u{1F525} MERGE FRENZY \u00B7 <span id="frenzyTime">15s</span></div>
+
   <nav class="tabs">
     <button id="tabMerge" class="tab active">Merge</button>
     <button id="tabGarden" class="tab">Garden</button>
+    <button id="tabTasks" class="tab">Tasks</button>
     <button id="tabUpgrades" class="tab">Upgrades</button>
   </nav>
 
@@ -64,7 +64,10 @@ ${css}
     <section id="panelMerge" class="panel">
       <div class="board-wrap"><canvas id="board"></canvas></div>
       <div id="orders" class="orders"></div>
-      <button id="podBtn" class="btn pod"><span id="podLabel">Tap Seed Pod</span></button>
+      <div class="actionbar">
+        <div id="boosters" class="boosters"></div>
+        <button id="podBtn" class="btn pod"><span id="podLabel">Tap Seed Pod</span></button>
+      </div>
     </section>
 
     <section id="panelGarden" class="panel" style="display:none">
@@ -74,12 +77,19 @@ ${css}
       <p class="hint">Plants keep producing coins while you're away (offline cap applies). Tap an empty plot to plant your highest-tier item.</p>
     </section>
 
+    <section id="panelTasks" class="panel" style="display:none">
+      <div class="panel-head">Daily missions</div>
+      <div id="missionsList" class="upgrades"></div>
+      <p class="hint">Missions refresh every day. Claim them for bonus coins.</p>
+    </section>
+
     <section id="panelUpgrades" class="panel" style="display:none">
       <div class="panel-head">Upgrades</div>
       <div id="upgradesList" class="upgrades"></div>
     </section>
   </main>
 
+  <button id="chestBtn" class="chest-btn" aria-label="Reward chest">\u{1F381}</button>
   <div id="toast" class="toast"></div>
   <div id="modalRoot"></div>
 </div>
@@ -89,6 +99,5 @@ ${bundle}
 </body>
 </html>
 `;
-
 fs.writeFileSync(new URL("./index.html", import.meta.url), html);
 console.log("built index.html:", html.length, "bytes (self-contained, no imports)");
