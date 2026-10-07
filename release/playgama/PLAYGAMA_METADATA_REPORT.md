@@ -79,14 +79,17 @@ not be proven; unprovable items are marked **NOT PROVEN FROM REPOSITORY**.
 
 ## 5. Image assets + licence
 
-See `IMAGE_LICENSE_REPORT.md`. Summary: the three covers are **original vector art** authored in-repo
-and rasterised with CairoSVG — **no generative model was used** (none was available here).
+See `IMAGE_LICENSE_REPORT.md`. Summary: the three covers are **AI-generated promo artwork** made
+with the **Runway** image generator on the connected workspace, then centre-cropped and resized
+locally to the exact pixel sizes. The game's **in-game art is NOT AI-generated** — it is drawn
+procedurally by the game code. Note: the Runway workspace is on the **free plan**, so confirm
+commercial-use terms before publishing (see the licence report).
 
 | File | Dimensions | SHA-256 |
 |---|---|---|
-| `assets/merge-bloom-square-800x800.png` | 800 × 800 | `c64bb4369a430196b12d4a4cde27089a4c9fbbb99754503c2804f8a63fa3cc65` |
-| `assets/merge-bloom-portrait-1080x1920.png` | 1080 × 1920 | `3a334c0527b68126b4e65dd8473314c73daac6871cc203436e11efc6ae61ee30` |
-| `assets/merge-bloom-landscape-1920x1080.png` | 1920 × 1080 | `8ae4662a9c17d11eb67bf41296d9f03cba652edbf314d3f877236fca16595861` |
+| `assets/merge-bloom-square-800x800.png` | 800 × 800 | `66dd9a326765591057f14a80a6f8ce7698c87c9f0aac4d7778f7be4246517210` |
+| `assets/merge-bloom-portrait-1080x1920.png` | 1080 × 1920 | `9b73a7dba59477d7d2fe2d7ab3b49582bba3c1cb4f413e262ce1a6e5476f13f9` |
+| `assets/merge-bloom-landscape-1920x1080.png` | 1920 × 1080 | `3ad5c7c0f486e40af2c4ea872c0f1a0e9fb1ade43ede95a63908c3a5685bc181` |
 | `assets/_reference-board.png` (reference only) | 1280 × 860 | — |
 
 **Reference note (Phase 6):** no browser is available in this environment, so the covers were built
