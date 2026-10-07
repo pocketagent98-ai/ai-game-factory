@@ -1,0 +1,10 @@
+{
+  "name": "merge-and-bloom",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Merge & Bloom - a portrait HTML5 merge-2 puzzle with an idle garden meta",
+  "scripts": {
+    "test": "node test.mjs"
+  }
+}

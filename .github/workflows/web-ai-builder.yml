@@ -1,0 +1,68 @@
+name: Merge & Bloom - AI builder (NVIDIA)
+
+# An autonomous build/improve loop. Reads the repo + docs, asks an NVIDIA NIM model
+# for ONE safe improvement, applies it, and only keeps it if the model tests pass.
+#
+# The API key is a GitHub Secret named NVIDIA_API_KEY and is referenced by name only -
+# it is never printed, stored, or committed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "What should the AI improve?"
+        required: false
+        default: "Improve gameplay polish, juice, and fix any bug you can find."
+      model:
+        description: "NVIDIA NIM model id"
+        required: false
+        default: "meta/llama-3.3-70b-instruct"
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  improve:
+    # run on manual dispatch, or when an issue gets the 'web-build' label
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'web-build'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Ask the NVIDIA model for an improvement
+        working-directory: merge-and-bloom
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          MODEL: ${{ github.event.inputs.model || 'meta/llama-3.3-70b-instruct' }}
+          TASK: ${{ github.event.inputs.task || 'Improve gameplay polish, juice, and fix any bug you can find.' }}
+        run: python3 tools/nvidia_build.py
+
+      - name: Commit the change to a branch and open a PR
+        if: success()
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit."; exit 0
+          fi
+          BRANCH="ai/merge-and-bloom-$(date +%Y%m%d-%H%M%S)"
+          git config user.name  "merge-and-bloom-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add merge-and-bloom
+          git commit -m "AI: build/improve Merge & Bloom"
+          git push -u origin "$BRANCH"
+          gh pr create --title "AI build: Merge & Bloom" \
+            --body "Automated NVIDIA-powered improvement. Tests passed before commit." \
+            --base main --head "$BRANCH" || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
