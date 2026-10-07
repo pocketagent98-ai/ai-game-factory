@@ -10,7 +10,7 @@ const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const app = {
   model: new GameModel(),
   canvas: null, ctx: null, dpr: 1, cell: 0, pad: 0,
-  drag: null, tab: "merge",
+  drag: null, tab: "merge", started: false,
   particles: [], floats: [], shakeUntil: 0, shakeMag: 0,
 };
 
@@ -33,6 +33,8 @@ function blip(freq, dur = 0.09, type = "sine", gain = 0.05) {
 // ---------------------------------------------------------------- bootstrap
 async function init() {
   await Platform.init();
+  Platform.onPause = (paused) => { if (paused) Platform.setSave(app.model.serialize()); };
+  Platform.onAudio = () => {};
   const env = Platform.getSave();
   if (env) app.model = GameModel.deserialize(env);
 
@@ -51,15 +53,19 @@ async function init() {
   $("tabMerge").addEventListener("click", () => setTab("merge"));
   $("tabGarden").addEventListener("click", () => setTab("garden"));
   $("tabTasks").addEventListener("click", () => setTab("tasks"));
+  $("tabLevels").addEventListener("click", () => setTab("levels"));
   $("tabUpgrades").addEventListener("click", () => setTab("upgrades"));
   $("collectBtn").addEventListener("click", () => doCollect(1));
   $("settingsBtn").addEventListener("click", showSettings);
   $("chestBtn").addEventListener("click", onChest);
+  $("giftBtn").addEventListener("click", onGift);
+  $("wheelBtn").addEventListener("click", onWheel);
 
   const pending = app.model.pendingOffline();
   if (pending > 0) showWelcomeBack(pending);
 
-  buildOrders(); buildGarden(); buildTasks(); buildUpgrades(); buildBoosters();
+  applyTheme();
+  buildOrders(); buildGarden(); buildLevels(); buildTasks(); buildUpgrades(); buildBoosters();
   setTab("merge");
   requestAnimationFrame(loop);
   Platform.sendMessage("game_ready");
@@ -165,6 +171,7 @@ function floatText(idx, text, color) {
 
 // ---------------------------------------------------------------- input
 function onDown(e) {
+  if (!app.started) { app.started = true; Platform.gameplayStart(); }
   const rect = app.canvas.getBoundingClientRect();
   const x = e.clientX - rect.left, y = e.clientY - rect.top;
   const idx = cellAt(x, y);
@@ -253,13 +260,17 @@ function updateHUD() {
 
   // chest badge
   $("chestBtn").classList.toggle("ready", m.chestReady);
+  $("giftBtn").classList.toggle("ready", m.streakClaimable());
+  $("wheelBtn").classList.toggle("ready", m.wheelFreeAvailable());
+  $("rushBanner").style.display = m.rushActive ? "" : "none";
+  if (m.rushActive) $("rushTime").textContent = Math.ceil((m.rushUntil - Date.now()) / 1000) + "s";
 }
 
-function refresh() { buildOrders(); buildGarden(); buildTasks(); buildUpgrades(); buildBoosters(); updateHUD(); render(); }
+function refresh() { buildOrders(); buildGarden(); buildLevels(); buildTasks(); buildUpgrades(); buildBoosters(); updateHUD(); render(); }
 
 function setTab(tab) {
   app.tab = tab;
-  for (const t of ["merge", "garden", "tasks", "upgrades"]) {
+  for (const t of ["merge", "garden", "levels", "tasks", "upgrades"]) {
     $("panel" + cap(t)).style.display = t === tab ? "" : "none";
     $("tab" + cap(t)).classList.toggle("active", t === tab);
   }
@@ -284,7 +295,7 @@ function buildOrders() {
       <button class="btn deliver" ${can ? "" : "disabled"}>${can ? "Deliver" : "…"} +${o.reward}</button>`;
     div.querySelector(".deliver").addEventListener("click", () => {
       const r = app.model.deliver(i);
-      if (r.ok) { toast("Order done! +" + r.reward + " \u{1F4B0}"); blip(520, 0.12, "triangle", 0.06); Platform.showInterstitial(); refresh(); checkBoardRest(); }
+      if (r.ok) { blip(520, 0.12, "triangle", 0.06); Platform.showInterstitial(); refresh(); checkBoardRest(); offerDouble(r.reward); }
     });
     el.appendChild(div);
   });
@@ -355,13 +366,22 @@ function buildUpgrades() {
     const lvl = app.model.upgrades[def.key];
     const d = document.createElement("div");
     d.className = "upg";
-    d.innerHTML = `<div><div class="upg-title">${def.title} <span class="lvl">Lv${lvl}</span></div>
-        <div class="upg-sub">${def.sub}</div></div>
-      <button class="btn buy ${afford && !maxed ? "ok" : ""}" ${maxed || !afford ? "disabled" : ""}>${maxed ? "MAX" : fmt(cost) + " \u{1F4B0}"}</button>`;
-    d.querySelector(".buy").addEventListener("click", () => {
-      const r = app.model.buyUpgrade(def.key);
-      if (r.ok) { toast(def.title + " upgraded"); blip(560, 0.1, "sine", 0.05); refresh(); } else toast("Not enough coins");
-    });
+    d.innerHTML = `<div style="flex:1"><div class="upg-title">${def.title} <span class="lvl">Lv${lvl}</span></div>
+        <div class="upg-sub">${def.sub}</div></div><div class="upg-btns"></div>`;
+    const btns = d.querySelector(".upg-btns");
+    const buy = document.createElement("button");
+    buy.className = "btn buy " + (afford && !maxed ? "ok" : "");
+    buy.disabled = maxed || !afford;
+    buy.textContent = maxed ? "MAX" : fmt(cost) + " \u{1F4B0}";
+    buy.addEventListener("click", () => { const r = app.model.buyUpgrade(def.key); if (r.ok) { toast(def.title + " upgraded"); blip(560, 0.1, "sine", 0.05); refresh(); } else toast("Not enough coins"); });
+    btns.appendChild(buy);
+    if (!maxed && !afford && app.model.rewardedLeft("coins") > 0) {
+      const ad = document.createElement("button");
+      ad.className = "btn ad";
+      ad.textContent = "+150 \u{1F4B0} ad";
+      ad.addEventListener("click", async () => { const ok = await Platform.showRewarded(); if (ok) { app.model.rewardedUse("coins"); app.model.coins += 150; toast("+150 \u{1F4B0}"); refresh(); } });
+      btns.appendChild(ad);
+    }
     el.appendChild(d);
   }
 }
@@ -404,6 +424,89 @@ function onChest() {
 function chestRewardToast(r) {
   blip(760, 0.16, "triangle", 0.06);
   toast(`Chest: +${fmt(r.coins)} \u{1F4B0}, +${r.energy} \u26A1${r.booster ? ", +1 " + r.booster : ""}`);
+}
+
+// ---------------------------------------------------------------- levels / themes / leaderboard
+function applyTheme() {
+  const t = C.THEMES.find(x => x.id === app.model.themes.selected) || C.THEMES[0];
+  const r = document.documentElement.style;
+  r.setProperty("--bg1", t.bg1); r.setProperty("--bg2", t.bg2);
+  r.setProperty("--panel", t.panel); r.setProperty("--accent", t.accent);
+}
+function buildLevels() {
+  const m = app.model, g = m.levelGoalDef;
+  const label = { merge: "Make merges", order: "Complete orders", spawn: "Tap the Seed Pod", tier: "Merge up to tier" }[g.type] || g.type;
+  const pct = Math.min(100, (m.campaign.progress / g.target) * 100);
+  const card = $("campaignCard"); card.innerHTML = "";
+  const head = document.createElement("div");
+  head.innerHTML = `<div class="upg-title">${g.boss ? "\u{1F451} BOSS \u00B7 " : ""}Level ${m.campaign.level}</div>
+    <div class="upg-sub">${label} ${m.campaign.progress}/${g.target}${g.type === "tier" ? " (T" + g.target + ")" : ""}</div>
+    <div class="mbar"><div class="mfill" style="width:${pct}%"></div></div>`;
+  card.appendChild(head);
+  const btn = document.createElement("button");
+  btn.className = "btn " + (m.campaign.done ? "ok" : "");
+  btn.textContent = m.campaign.done ? "Claim reward" : (g.boss ? "Boss in progress\u2026" : "In progress");
+  btn.disabled = !m.campaign.done;
+  btn.addEventListener("click", () => { const r = m.claimLevel(); if (r.ok) { toast("Level " + (r.level - 1) + " done! +" + r.reward + " \u{1F4B0}"); blip(720, 0.16, "triangle", 0.06); refresh(); } });
+  card.appendChild(btn);
+
+  const lb = $("leaderboardList"); lb.innerHTML = "";
+  m.leaderboard().slice(0, 10).forEach((row, i) => {
+    const d = document.createElement("div");
+    d.className = "lbrow" + (row.me ? " me" : "");
+    d.innerHTML = `<span class="rank">${i + 1}</span><span class="nm">${row.name}</span><span class="sc">${fmt(row.score)}</span>`;
+    lb.appendChild(d);
+  });
+
+  const tg = $("themesGrid"); tg.innerHTML = "";
+  for (const t of C.THEMES) {
+    const owned = m.themeOwned(t.id), sel = m.themes.selected === t.id, locked = m.campaign.level < t.req;
+    const d = document.createElement("div");
+    d.className = "theme" + (sel ? " sel" : "") + (locked && !owned ? " locked" : "");
+    d.style.background = `linear-gradient(160deg, ${t.bg2}, ${t.bg1})`;
+    d.innerHTML = `<span class="tname">${t.name}</span><span class="tstate">${sel ? "Selected" : owned ? "Owned" : locked ? "Lv" + t.req : fmt(t.cost) + " \u{1F4B0}"}</span>`;
+    d.addEventListener("click", () => {
+      if (owned) { m.selectTheme(t.id); applyTheme(); refresh(); }
+      else { const r = m.buyTheme(t.id); if (r.ok) { applyTheme(); toast(t.name + " unlocked!"); } else toast(r.reason === "locked" ? "Reach level " + t.req : "Not enough coins"); refresh(); }
+    });
+    tg.appendChild(d);
+  }
+}
+
+// ---------------------------------------------------------------- daily gift / fortune wheel
+function onGift() {
+  const m = app.model;
+  if (!m.streakClaimable()) { toast("Come back tomorrow for day " + ((m.streak.day % 7) + 1)); return; }
+  const day = (m.streak.lastClaimDay === m._dayKey() - 1) ? (m.streak.day % 7) + 1 : 1;
+  const reward = C.STREAK_REWARDS[day - 1];
+  modal("Daily gift \u{1F381}", `Day ${day} of 7 \u2014 claim ${reward} coins, or watch a short ad to double it.`, [
+    { label: "Claim +" + reward + " \u{1F4B0}", primary: true, onClick: () => { const r = m.claimStreak(); if (r.ok) { toast("+" + r.reward + " \u{1F4B0} (day " + r.day + ")"); blip(640, 0.14, "triangle", 0.06); } closeModal(); refresh(); } },
+    { label: "Claim + double (watch ad)", onClick: async () => { const ok = await Platform.showRewarded(); const r = m.claimStreak(); if (r.ok) { if (ok && m.rewardedLeft("streak") > 0) { m.rewardedUse("streak"); m.coins += r.reward; } toast("+" + (ok ? r.reward * 2 : r.reward) + " \u{1F4B0}"); } closeModal(); refresh(); } },
+    { label: "Later", onClick: closeModal },
+  ]);
+}
+function onWheel() {
+  const m = app.model;
+  const free = m.wheelFreeAvailable();
+  const adLeft = m.rewardedLeft("wheel");
+  const alt = C.REWARDED.wheel.coinsAlt;
+  modal("Fortune Wheel \u{1F3A1}", "Spin for coins, energy or a booster.", [
+    { label: free ? "Free spin" : (adLeft > 0 ? "Spin \u2014 watch a short ad" : "Ad spins used up today"), primary: free || adLeft > 0,
+      onClick: async () => {
+        if (free) m.consumeFreeSpin();
+        else if (adLeft > 0) { const ok = await Platform.showRewarded(); if (!ok) { closeModal(); return; } m.rewardedUse("wheel"); }
+        else return;
+        const r = m.spinWheel(); toast("Wheel: " + r.segment.label); blip(700, 0.16, "triangle", 0.06); closeModal(); refresh();
+      } },
+    { label: `Spin for ${alt} \u{1F4B0}`, onClick: () => { if (m.coins < alt) { toast("Not enough coins"); return; } m.coins -= alt; const r = m.spinWheel(); toast("Wheel: " + r.segment.label); closeModal(); refresh(); } },
+    { label: "Close", onClick: closeModal },
+  ]);
+}
+function offerDouble(amount) {
+  modal("Nice order! \u{1F389}", `Double your reward \u2014 ${amount} more coins.`, [
+    { label: `Double it (+${amount} \u{1F4B0}) \u2014 watch ad`, primary: true, onClick: async () => { const ok = await Platform.showRewarded(); if (ok) { app.model.coins += amount; toast("+" + amount + " \u{1F4B0}"); blip(600, 0.12, "triangle", 0.05); } closeModal(); refresh(); } },
+    { label: "No thanks", onClick: closeModal },
+  ]);
 }
 
 // ---------------------------------------------------------------- board-rest
@@ -469,6 +572,9 @@ function showSettings() {
 
 // ---------------------------------------------------------------- persistence
 setInterval(() => Platform.setSave(app.model.serialize()), 15000);
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") Platform.setSave(app.model.serialize()); });
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") { Platform.setSave(app.model.serialize()); Platform.gameplayStop(); }
+  else Platform.gameplayStart();
+});
 
 window.addEventListener("load", init);

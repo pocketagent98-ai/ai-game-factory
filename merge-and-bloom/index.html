@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0f3d2e">
 <title>Merge &amp; Bloom</title>
+<!-- Playgama Bridge: one SDK for Poki / CrazyGames / GameDistribution / Yandex / Playgama.
+     If this script is unavailable (file://, offline, or a portal that blocks external
+     requests), the game falls back to standalone saves + simulated ads automatically. -->
+<script src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>
 <style>
 :root{
   --bg1:#0f3d2e; --bg2:#124b39; --panel:#173e33; --line:rgba(255,255,255,.14);
@@ -89,6 +93,26 @@ canvas{display:block;touch-action:none;border-radius:16px;background:rgba(0,0,0,
 .modal p{margin:0 0 14px;color:var(--dim);font-size:14px}
 .modal-btns{display:flex;flex-direction:column;gap:8px}
 
+/* v3 additions */
+.rush{text-align:center;font-weight:900;background:linear-gradient(90deg,#4dd0e1,#7ef0b0);color:#04322a;border-radius:10px;padding:5px;font-size:13px;animation:pulse .8s infinite alternate}
+.upg-btns{display:flex;flex-direction:column;gap:5px}
+.btn.ad{background:#3a5c8a;font-size:12px;padding:6px 9px}
+.campaign{flex-direction:column;align-items:stretch;gap:6px}
+.lb{display:flex;flex-direction:column;gap:4px;max-height:150px;overflow:auto}
+.lbrow{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:5px 9px;font-size:13px}
+.lbrow.me{border-color:var(--accent);background:#1d5241}
+.lbrow .rank{width:18px;color:var(--dim);font-weight:800}
+.lbrow .nm{flex:1;font-weight:700}
+.lbrow .sc{font-weight:800;color:#ffe066}
+.themes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.theme{aspect-ratio:1.35;border-radius:12px;border:2px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:800;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.theme.sel{border-color:#fff}
+.theme.locked{opacity:.55}
+.theme .tname{font-size:12px}
+.theme .tstate{font-size:10px;font-weight:700;opacity:.9}
+.chest-btn.gift{right:80px}
+.chest-btn.wheel{right:146px}
+
 </style>
 </head>
 <body>
@@ -114,10 +138,12 @@ canvas{display:block;touch-action:none;border-radius:16px;background:rgba(0,0,0,
     <div class="combo-bar"><div id="comboFill" class="combo-fill"></div></div>
   </div>
   <div id="frenzyBanner" class="frenzy" style="display:none">🔥 MERGE FRENZY · <span id="frenzyTime">15s</span></div>
+  <div id="rushBanner" class="rush" style="display:none">⚡ RUSH HOUR · double coins · <span id="rushTime">45s</span></div>
 
   <nav class="tabs">
     <button id="tabMerge" class="tab active">Merge</button>
     <button id="tabGarden" class="tab">Garden</button>
+    <button id="tabLevels" class="tab">Levels</button>
     <button id="tabTasks" class="tab">Tasks</button>
     <button id="tabUpgrades" class="tab">Upgrades</button>
   </nav>
@@ -139,6 +165,14 @@ canvas{display:block;touch-action:none;border-radius:16px;background:rgba(0,0,0,
       <p class="hint">Plants keep producing coins while you're away (offline cap applies). Tap an empty plot to plant your highest-tier item.</p>
     </section>
 
+    <section id="panelLevels" class="panel" style="display:none">
+      <div id="campaignCard" class="upg campaign"></div>
+      <div class="panel-head">Leaderboard</div>
+      <div id="leaderboardList" class="lb"></div>
+      <div class="panel-head">Garden themes</div>
+      <div id="themesGrid" class="themes"></div>
+    </section>
+
     <section id="panelTasks" class="panel" style="display:none">
       <div class="panel-head">Daily missions</div>
       <div id="missionsList" class="upgrades"></div>
@@ -152,6 +186,8 @@ canvas{display:block;touch-action:none;border-radius:16px;background:rgba(0,0,0,
   </main>
 
   <button id="chestBtn" class="chest-btn" aria-label="Reward chest">🎁</button>
+  <button id="giftBtn" class="chest-btn gift" aria-label="Daily gift">🎁✨</button>
+  <button id="wheelBtn" class="chest-btn wheel" aria-label="Fortune wheel">🎡</button>
   <div id="toast" class="toast"></div>
   <div id="modalRoot"></div>
 </div>
@@ -237,12 +273,63 @@ const MISSION_POOL = [
 ];
 const REWARDED = {
   energy:        { cap: ENERGY_REWARDED_DAILY, coinsAlt: 100 },
+  coins:         { cap: 6, coinsAlt: 0 },   // "free coins" ad (shop placement)
+  wheel:         { cap: 3, coinsAlt: 120 },
+  streak:        { cap: 1, coinsAlt: 0 },   // ad to double the daily-streak reward
   cooldown:      { cap: 3, coinsAlt: 50 },
   luckyBloom:    { cap: 3, coinsAlt: 150 },
   refreshOrders: { cap: 2, coinsAlt: 40 },
   chest:         { cap: 6, coinsAlt: 250 },
   doubleHarvest: { cap: 1, coinsAlt: 0 },
 };
+
+// ================= v3: campaign (levels + bosses), themes, leaderboard, =====
+// ================= streak, fortune wheel, double-reward offers =============
+
+// --- Campaign: numbered levels; every 5th is a BOSS with a harder goal ---
+const BOSS_EVERY = 5;
+function levelGoal(n) {
+  if (n % BOSS_EVERY === 0) return { type: "tier", target: Math.min(12, 4 + Math.floor(n / BOSS_EVERY)), boss: true };
+  const cycle = n % 3;
+  if (cycle === 1) return { type: "merge", target: 10 + n * 5, boss: false };
+  if (cycle === 2) return { type: "order", target: 2 + Math.floor(n / 2), boss: false };
+  return { type: "spawn", target: 15 + n * 4, boss: false };
+}
+const LEVEL_REWARD_BASE = 150;
+
+// --- Garden themes (cosmetic; unlocked by campaign level, bought with coins) ---
+const THEMES = [
+  { id: "meadow",   name: "Meadow",   req: 1,  cost: 0,    bg1: "#0f3d2e", bg2: "#124b39", panel: "#173e33", accent: "#7ef0b0" },
+  { id: "sunset",   name: "Sunset",   req: 3,  cost: 600,  bg1: "#3a1d2e", bg2: "#5a2a3a", panel: "#4a2333", accent: "#ffb37e" },
+  { id: "ocean",    name: "Ocean",    req: 5,  cost: 1200, bg1: "#0d2b3e", bg2: "#12415a", panel: "#123448", accent: "#7ecbff" },
+  { id: "lavender", name: "Lavender", req: 8,  cost: 2000, bg1: "#241a3a", bg2: "#352a55", panel: "#2b2145", accent: "#c9a7ff" },
+  { id: "autumn",   name: "Autumn",   req: 11, cost: 3200, bg1: "#3a2410", bg2: "#5a3a18", panel: "#4a2f14", accent: "#ffcf7e" },
+  { id: "midnight", name: "Midnight", req: 15, cost: 5000, bg1: "#10131f", bg2: "#1b2033", panel: "#171c2c", accent: "#9fb8ff" },
+];
+
+// --- Daily login streak (7-day cycle) ---
+const STREAK_REWARDS = [120, 180, 250, 320, 400, 500, 800];
+
+// --- Fortune wheel ---
+const WHEEL = [
+  { label: "120",     coins: 120 },
+  { label: "25\u26A1", energy: 25 },
+  { label: "250",     coins: 250 },
+  { label: "Shovel",  booster: "shovel" },
+  { label: "400",     coins: 400 },
+  { label: "Mixer",   booster: "mixer" },
+  { label: "700",     coins: 700 },
+  { label: "JACKPOT", coins: 1500 },
+];
+const WHEEL_FREE_PER_DAY = 1;
+const WHEEL_AD_SPINS = 3;
+
+// --- Leaderboard (local simulated rivals; a real build can use Bridge leaderboards) ---
+const LB_NAMES = ["BloomMaster", "Petal", "VineKing", "SunnyBee", "RootRunner", "Pixie", "Fern", "Mossy", "Tulip", "Willow", "Sage", "Clover"];
+
+// --- Rush hour: a periodic double-coins window (keeps players playing) ---
+const RUSH_EVERY_MS = 6 * 60 * 1000;
+const RUSH_MS = 45 * 1000;
 
 // Merge & Bloom — pure game model (no DOM, unit-testable)
 
@@ -279,6 +366,15 @@ class GameModel {
     this.chestReady = false;
     this.nextChestAt = Date.now() + CHEST_FIRST_MS;
     this.boosters = { shovel: 1, mixer: 1, lucky: 1 };
+
+    // v3 systems
+    this.totalMerges = 0;
+    this.campaign = { level: 1, progress: 0, done: false, boss: levelGoal(1).boss };
+    this.themes = { owned: ["meadow"], selected: "meadow" };
+    this.streak = { day: 0, lastClaimDay: -1 };
+    this.wheel = { lastFreeDay: -1, adSpinsToday: 0 };
+    this.rushUntil = 0;
+    this.rushNextAt = Date.now() + RUSH_EVERY_MS;
 
     const day = this._dayKey();
     this.daily = { rewardedCounts: {}, dayKey: day, missionDay: day };
@@ -369,7 +465,8 @@ class GameModel {
     const frenzyJust = this.combo >= FRENZY_COMBO && now >= this.frenzyUntil;
     if (frenzyJust) this.frenzyUntil = now + FRENZY_MS;
 
-    const mult = this.comboMultiplier() * (this.frenzyActive ? 2 : 1) * this.mergeValueMult;
+    this.totalMerges = (this.totalMerges || 0) + 1;
+    const mult = this.comboMultiplier() * (this.frenzyActive ? 2 : 1) * (this.rushActive ? 2 : 1) * this.mergeValueMult;
     const coins = Math.round(TIERS[tier].value * mult);
 
     this.grid[to] = tier + 1;
@@ -420,7 +517,7 @@ class GameModel {
       let need = it.qty;
       for (let i = 0; i < this.grid.length && need > 0; i++) { if (this.grid[i] === it.tier) { this.grid[i] = 0; need--; } }
     }
-    const bonus = this.frenzyActive ? 2 : 1;
+    const bonus = (this.frenzyActive ? 2 : 1) * (this.rushActive ? 2 : 1);
     const reward = o.reward * bonus;
     this.coins += reward;
     this.addXp(3);
@@ -498,7 +595,75 @@ class GameModel {
       else m.progress += value;
       if (m.progress >= m.target) { m.progress = m.target; m.done = true; }
     }
+    this._campaignProgress(type, value);
   }
+
+  // ---- campaign (levels + bosses) --------------------------------------
+  get rushActive() { return Date.now() < this.rushUntil; }
+  get levelGoalDef() { return levelGoal(this.campaign.level); }
+
+  _campaignProgress(type, value) {
+    const g = this.levelGoalDef;
+    if (g.type !== type) return;
+    if (type === "tier") this.campaign.progress = Math.max(this.campaign.progress, value);
+    else this.campaign.progress += value;
+    if (this.campaign.progress >= g.target) this.campaign.done = true;
+  }
+
+  claimLevel() {
+    if (!this.campaign.done) return { ok: false };
+    const lvl = this.campaign.level;
+    const reward = Math.round(LEVEL_REWARD_BASE * (1 + lvl * 0.25) * (this.campaign.boss ? 2 : 1));
+    this.coins += reward;
+    if (this.campaign.boss) this.boosters.lucky = (this.boosters.lucky || 0) + 1;
+    this.campaign = { level: lvl + 1, progress: 0, done: false, boss: levelGoal(lvl + 1).boss };
+    return { ok: true, reward, level: lvl + 1 };
+  }
+
+  // ---- themes -----------------------------------------------------------
+  themeOwned(id) { return this.themes.owned.includes(id); }
+  buyTheme(id) {
+    const t = THEMES.find(x => x.id === id); if (!t) return { ok: false };
+    if (this.themeOwned(id)) { this.themes.selected = id; return { ok: true }; }
+    if (this.campaign.level < t.req) return { ok: false, reason: "locked" };
+    if (this.coins < t.cost) return { ok: false, reason: "coins" };
+    this.coins -= t.cost; this.themes.owned.push(id); this.themes.selected = id;
+    return { ok: true };
+  }
+  selectTheme(id) { if (!this.themeOwned(id)) return { ok: false }; this.themes.selected = id; return { ok: true }; }
+
+  // ---- leaderboard ------------------------------------------------------
+  score() { return this.coins + this.level * 500 + this.bestCombo * 200 + (this.campaign.level - 1) * 1500 + (this.totalMerges || 0) * 10; }
+  leaderboard(now = Date.now()) {
+    const seed = Math.floor(now / 86400000);
+    const rows = LB_NAMES.map((n, i) => ({ name: n, score: Math.round(600 + ((seed * (i + 3)) % 97) * 130 + i * 450) }));
+    rows.push({ name: "You", score: this.score(), me: true });
+    rows.sort((a, b) => b.score - a.score);
+    return rows;
+  }
+
+  // ---- daily login streak ----------------------------------------------
+  streakClaimable(now = Date.now()) { return this.streak.lastClaimDay !== this._dayKey(now); }
+  claimStreak(now = Date.now()) {
+    if (!this.streakClaimable(now)) return { ok: false, reason: "claimed" };
+    const y = this._dayKey(now);
+    if (this.streak.lastClaimDay === y - 1) this.streak.day = (this.streak.day % 7) + 1; else this.streak.day = 1;
+    this.streak.lastClaimDay = y;
+    const reward = STREAK_REWARDS[this.streak.day - 1];
+    this.coins += reward;
+    return { ok: true, day: this.streak.day, reward };
+  }
+
+  // ---- fortune wheel ----------------------------------------------------
+  wheelFreeAvailable(now = Date.now()) { return this.wheel.lastFreeDay !== this._dayKey(now); }
+  spinWheel() {
+    const seg = WHEEL[Math.floor(this._roll() * WHEEL.length)];
+    if (seg.coins) this.coins += seg.coins;
+    if (seg.energy) this.energy = Math.min(this.energyCap, this.energy + seg.energy);
+    if (seg.booster) this.boosters[seg.booster] = (this.boosters[seg.booster] || 0) + 1;
+    return { ok: true, segment: seg };
+  }
+  consumeFreeSpin(now = Date.now()) { this.wheel.lastFreeDay = this._dayKey(now); }
 
   claimMission(i) {
     const m = this.missions[i];
@@ -542,6 +707,7 @@ class GameModel {
       case "luckyBloom": { const cells = this.emptyCells(); if (cells.length) this.grid[cells[Math.floor(this._roll() * cells.length)]] = 4; break; }
       case "refreshOrders": this.genOrders(); break;
       case "doubleHarvest": break;
+      case "coins": this.coins += 150; break;
     }
     return { ok: true };
   }
@@ -551,6 +717,7 @@ class GameModel {
     this.regenEnergy(now);
     if (this.combo > 0 && now >= this.comboExpires) this.combo = 0;
     if (!this.chestReady && now >= this.nextChestAt) this.chestReady = true;
+    if (now >= this.rushNextAt) { this.rushUntil = now + RUSH_MS; this.rushNextAt = now + RUSH_EVERY_MS; }
     if (this.upgrades.autoProducer > 1) {
       const interval = Math.max(10, 40 - this.upgrades.autoProducer * 4);
       this.autoCarry += 1;
@@ -569,7 +736,8 @@ class GameModel {
       bloom: this.bloom, plots: this.plots, upgrades: this.upgrades, podCharge: this.podCharge,
       podCooldownEnds: this.podCooldownEnds, lastCollect: this.lastCollect, orders: this.orders,
       daily: this.daily, missions: this.missions, boosters: this.boosters, bestCombo: this.bestCombo,
-      nextChestAt: this.nextChestAt,
+      nextChestAt: this.nextChestAt, totalMerges: this.totalMerges, campaign: this.campaign,
+      themes: this.themes, streak: this.streak, wheel: this.wheel, rushNextAt: this.rushNextAt,
     } };
   }
 
@@ -585,6 +753,8 @@ class GameModel {
       orders: (s.orders && s.orders.length) ? s.orders : m.orders, daily: s.daily || m.daily,
       missions: (s.missions && s.missions.length) ? s.missions : m.missions,
       boosters: s.boosters || m.boosters, bestCombo: s.bestCombo || 0, nextChestAt: s.nextChestAt || (Date.now() + CHEST_FIRST_MS),
+      totalMerges: s.totalMerges || 0, campaign: s.campaign || m.campaign, themes: s.themes || m.themes,
+      streak: s.streak || m.streak, wheel: s.wheel || m.wheel, rushNextAt: s.rushNextAt || (Date.now() + RUSH_EVERY_MS),
     });
     m.lastTick = Date.now();
     if (m.daily.missionDay !== m._dayKey()) m._rollMissions();
@@ -592,40 +762,91 @@ class GameModel {
   }
 }
 
-// Platform adapter.
-// On a real portal build this wraps the Playgama Bridge SDK (one integration for
-// Poki / CrazyGames / GameDistribution / Yandex / Playgama). All ads are served by
-// the platform - this game never ships its own ad network.
+// Platform adapter — Playgama Bridge integration with a safe standalone fallback.
 //
-// This standalone build keeps the SAME interface but uses localStorage for saves and
-// simulates ad completion, so the game is fully playable on GitHub Pages today.
-// To go live: replace the bodies below with bridge.* calls (see docs/TECH_REQUIREMENTS.md).
+// On a real portal the Playgama Bridge SDK is loaded in index.html
+// (<script src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>).
+// Bridge is ONE integration that covers Poki, CrazyGames, GameDistribution, Yandex,
+// Playgama and 25+ platforms: it loads the platform's native SDK and routes calls.
+//
+// ALL ADS ARE SERVED BY THE PLATFORM. This game never ships its own ad network.
+// If Bridge is not present (local dev, file://, GitHub Pages), we fall back to
+// localStorage saves and simulated ads so the game is fully playable.
 const Platform = {
   name: "standalone",
-  _bridge: null,
+  bridge: null,
+  _cache: null,
+  onPause: null,
+  onAudio: null,
 
   async init() {
-    // Real build:
-    //   await bridge.initialize();
-    //   this._bridge = bridge;
-    //   this.name = bridge.platform.id;
+    const b = (typeof window !== "undefined") && window.bridge;
+    if (b) {
+      try {
+        await b.initialize();
+        this.bridge = b;
+        try { this.name = b.platform.id; } catch (e) {}
+        // one central handler for pause + audio (fires for ads, tab switches, etc.)
+        try {
+          b.platform.on(b.EVENT_NAME.PAUSE_STATE_CHANGED, (paused) => { if (this.onPause) this.onPause(paused); });
+          b.platform.on(b.EVENT_NAME.AUDIO_STATE_CHANGED, (enabled) => { if (this.onAudio) this.onAudio(enabled); });
+        } catch (e) {}
+      } catch (e) { this.bridge = null; }
+    }
+    await this._preload();
   },
 
-  getSave() {
-    try { return JSON.parse(localStorage.getItem("mb_save") || "null"); } catch { return null; }
+  // ---- saves ------------------------------------------------------------
+  async _preload() {
+    let env = null;
+    if (this.bridge) {
+      try {
+        const data = await this.bridge.storage.get(["mb_save"]);
+        if (data && data[0]) env = JSON.parse(data[0]);
+      } catch (e) {}
+    }
+    if (!env) {
+      try { env = JSON.parse(localStorage.getItem("mb_save") || "null"); } catch (e) {}
+    }
+    this._cache = env;
   },
+  getSave() { return this._cache; },
   setSave(env) {
-    try { localStorage.setItem("mb_save", JSON.stringify(env)); } catch { /* incognito */ }
+    this._cache = env;
+    const s = JSON.stringify(env);
+    if (this.bridge) { try { this.bridge.storage.set(["mb_save"], [s]); } catch (e) {} }
+    try { localStorage.setItem("mb_save", s); } catch (e) {}
   },
 
-  sendMessage(_m) { /* bridge.platform.sendMessage(m) */ },
+  // ---- lifecycle --------------------------------------------------------
+  sendMessage(m) { if (this.bridge) { try { this.bridge.platform.sendMessage(m); } catch (e) {} } },
+  gameplayStart() { this.sendMessage("level_started"); },
+  gameplayStop() { this.sendMessage("level_paused"); },
 
-  isRewardedSupported() { return true; },
-  // Returns true when the player completed the ad. Standalone: simulated.
-  async showRewarded() { return true; },
-  async showInterstitial() { /* bridge.advertisement.showInterstitial() */ },
+  // ---- ads (all served by the platform) --------------------------------
+  isRewardedSupported() {
+    if (!this.bridge) return true;                     // standalone: simulated
+    try { return this.bridge.advertisement.isRewardedSupported(); } catch (e) { return true; }
+  },
+  async showRewarded() {
+    if (!this.bridge) return true;                     // standalone: simulated reward
+    try {
+      const ad = this.bridge.advertisement;
+      if (ad.isRewardedSupported && !ad.isRewardedSupported()) return false;
+      await ad.showRewarded();
+      return ad.rewardedState === "rewarded";
+    } catch (e) { return false; }
+  },
+  async showInterstitial() {
+    if (!this.bridge) return;
+    try { await this.bridge.advertisement.showInterstitial(); } catch (e) {}
+  },
 
-  getLang() { return (navigator.language || "en").slice(0, 2); },
+  // ---- misc -------------------------------------------------------------
+  getLang() {
+    if (this.bridge) { try { return this.bridge.platform.language; } catch (e) {} }
+    return (typeof navigator !== "undefined" && navigator.language || "en").slice(0, 2);
+  },
   isAudioEnabled() { return true; },
 };
 
@@ -638,7 +859,7 @@ const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const app = {
   model: new GameModel(),
   canvas: null, ctx: null, dpr: 1, cell: 0, pad: 0,
-  drag: null, tab: "merge",
+  drag: null, tab: "merge", started: false,
   particles: [], floats: [], shakeUntil: 0, shakeMag: 0,
 };
 
@@ -661,6 +882,8 @@ function blip(freq, dur = 0.09, type = "sine", gain = 0.05) {
 // ---------------------------------------------------------------- bootstrap
 async function init() {
   await Platform.init();
+  Platform.onPause = (paused) => { if (paused) Platform.setSave(app.model.serialize()); };
+  Platform.onAudio = () => {};
   const env = Platform.getSave();
   if (env) app.model = GameModel.deserialize(env);
 
@@ -679,15 +902,19 @@ async function init() {
   $("tabMerge").addEventListener("click", () => setTab("merge"));
   $("tabGarden").addEventListener("click", () => setTab("garden"));
   $("tabTasks").addEventListener("click", () => setTab("tasks"));
+  $("tabLevels").addEventListener("click", () => setTab("levels"));
   $("tabUpgrades").addEventListener("click", () => setTab("upgrades"));
   $("collectBtn").addEventListener("click", () => doCollect(1));
   $("settingsBtn").addEventListener("click", showSettings);
   $("chestBtn").addEventListener("click", onChest);
+  $("giftBtn").addEventListener("click", onGift);
+  $("wheelBtn").addEventListener("click", onWheel);
 
   const pending = app.model.pendingOffline();
   if (pending > 0) showWelcomeBack(pending);
 
-  buildOrders(); buildGarden(); buildTasks(); buildUpgrades(); buildBoosters();
+  applyTheme();
+  buildOrders(); buildGarden(); buildLevels(); buildTasks(); buildUpgrades(); buildBoosters();
   setTab("merge");
   requestAnimationFrame(loop);
   Platform.sendMessage("game_ready");
@@ -793,6 +1020,7 @@ function floatText(idx, text, color) {
 
 // ---------------------------------------------------------------- input
 function onDown(e) {
+  if (!app.started) { app.started = true; Platform.gameplayStart(); }
   const rect = app.canvas.getBoundingClientRect();
   const x = e.clientX - rect.left, y = e.clientY - rect.top;
   const idx = cellAt(x, y);
@@ -881,13 +1109,17 @@ function updateHUD() {
 
   // chest badge
   $("chestBtn").classList.toggle("ready", m.chestReady);
+  $("giftBtn").classList.toggle("ready", m.streakClaimable());
+  $("wheelBtn").classList.toggle("ready", m.wheelFreeAvailable());
+  $("rushBanner").style.display = m.rushActive ? "" : "none";
+  if (m.rushActive) $("rushTime").textContent = Math.ceil((m.rushUntil - Date.now()) / 1000) + "s";
 }
 
-function refresh() { buildOrders(); buildGarden(); buildTasks(); buildUpgrades(); buildBoosters(); updateHUD(); render(); }
+function refresh() { buildOrders(); buildGarden(); buildLevels(); buildTasks(); buildUpgrades(); buildBoosters(); updateHUD(); render(); }
 
 function setTab(tab) {
   app.tab = tab;
-  for (const t of ["merge", "garden", "tasks", "upgrades"]) {
+  for (const t of ["merge", "garden", "levels", "tasks", "upgrades"]) {
     $("panel" + cap(t)).style.display = t === tab ? "" : "none";
     $("tab" + cap(t)).classList.toggle("active", t === tab);
   }
@@ -912,7 +1144,7 @@ function buildOrders() {
       <button class="btn deliver" ${can ? "" : "disabled"}>${can ? "Deliver" : "…"} +${o.reward}</button>`;
     div.querySelector(".deliver").addEventListener("click", () => {
       const r = app.model.deliver(i);
-      if (r.ok) { toast("Order done! +" + r.reward + " \u{1F4B0}"); blip(520, 0.12, "triangle", 0.06); Platform.showInterstitial(); refresh(); checkBoardRest(); }
+      if (r.ok) { blip(520, 0.12, "triangle", 0.06); Platform.showInterstitial(); refresh(); checkBoardRest(); offerDouble(r.reward); }
     });
     el.appendChild(div);
   });
@@ -983,13 +1215,22 @@ function buildUpgrades() {
     const lvl = app.model.upgrades[def.key];
     const d = document.createElement("div");
     d.className = "upg";
-    d.innerHTML = `<div><div class="upg-title">${def.title} <span class="lvl">Lv${lvl}</span></div>
-        <div class="upg-sub">${def.sub}</div></div>
-      <button class="btn buy ${afford && !maxed ? "ok" : ""}" ${maxed || !afford ? "disabled" : ""}>${maxed ? "MAX" : fmt(cost) + " \u{1F4B0}"}</button>`;
-    d.querySelector(".buy").addEventListener("click", () => {
-      const r = app.model.buyUpgrade(def.key);
-      if (r.ok) { toast(def.title + " upgraded"); blip(560, 0.1, "sine", 0.05); refresh(); } else toast("Not enough coins");
-    });
+    d.innerHTML = `<div style="flex:1"><div class="upg-title">${def.title} <span class="lvl">Lv${lvl}</span></div>
+        <div class="upg-sub">${def.sub}</div></div><div class="upg-btns"></div>`;
+    const btns = d.querySelector(".upg-btns");
+    const buy = document.createElement("button");
+    buy.className = "btn buy " + (afford && !maxed ? "ok" : "");
+    buy.disabled = maxed || !afford;
+    buy.textContent = maxed ? "MAX" : fmt(cost) + " \u{1F4B0}";
+    buy.addEventListener("click", () => { const r = app.model.buyUpgrade(def.key); if (r.ok) { toast(def.title + " upgraded"); blip(560, 0.1, "sine", 0.05); refresh(); } else toast("Not enough coins"); });
+    btns.appendChild(buy);
+    if (!maxed && !afford && app.model.rewardedLeft("coins") > 0) {
+      const ad = document.createElement("button");
+      ad.className = "btn ad";
+      ad.textContent = "+150 \u{1F4B0} ad";
+      ad.addEventListener("click", async () => { const ok = await Platform.showRewarded(); if (ok) { app.model.rewardedUse("coins"); app.model.coins += 150; toast("+150 \u{1F4B0}"); refresh(); } });
+      btns.appendChild(ad);
+    }
     el.appendChild(d);
   }
 }
@@ -1032,6 +1273,89 @@ function onChest() {
 function chestRewardToast(r) {
   blip(760, 0.16, "triangle", 0.06);
   toast(`Chest: +${fmt(r.coins)} \u{1F4B0}, +${r.energy} \u26A1${r.booster ? ", +1 " + r.booster : ""}`);
+}
+
+// ---------------------------------------------------------------- levels / themes / leaderboard
+function applyTheme() {
+  const t = THEMES.find(x => x.id === app.model.themes.selected) || THEMES[0];
+  const r = document.documentElement.style;
+  r.setProperty("--bg1", t.bg1); r.setProperty("--bg2", t.bg2);
+  r.setProperty("--panel", t.panel); r.setProperty("--accent", t.accent);
+}
+function buildLevels() {
+  const m = app.model, g = m.levelGoalDef;
+  const label = { merge: "Make merges", order: "Complete orders", spawn: "Tap the Seed Pod", tier: "Merge up to tier" }[g.type] || g.type;
+  const pct = Math.min(100, (m.campaign.progress / g.target) * 100);
+  const card = $("campaignCard"); card.innerHTML = "";
+  const head = document.createElement("div");
+  head.innerHTML = `<div class="upg-title">${g.boss ? "\u{1F451} BOSS \u00B7 " : ""}Level ${m.campaign.level}</div>
+    <div class="upg-sub">${label} ${m.campaign.progress}/${g.target}${g.type === "tier" ? " (T" + g.target + ")" : ""}</div>
+    <div class="mbar"><div class="mfill" style="width:${pct}%"></div></div>`;
+  card.appendChild(head);
+  const btn = document.createElement("button");
+  btn.className = "btn " + (m.campaign.done ? "ok" : "");
+  btn.textContent = m.campaign.done ? "Claim reward" : (g.boss ? "Boss in progress\u2026" : "In progress");
+  btn.disabled = !m.campaign.done;
+  btn.addEventListener("click", () => { const r = m.claimLevel(); if (r.ok) { toast("Level " + (r.level - 1) + " done! +" + r.reward + " \u{1F4B0}"); blip(720, 0.16, "triangle", 0.06); refresh(); } });
+  card.appendChild(btn);
+
+  const lb = $("leaderboardList"); lb.innerHTML = "";
+  m.leaderboard().slice(0, 10).forEach((row, i) => {
+    const d = document.createElement("div");
+    d.className = "lbrow" + (row.me ? " me" : "");
+    d.innerHTML = `<span class="rank">${i + 1}</span><span class="nm">${row.name}</span><span class="sc">${fmt(row.score)}</span>`;
+    lb.appendChild(d);
+  });
+
+  const tg = $("themesGrid"); tg.innerHTML = "";
+  for (const t of THEMES) {
+    const owned = m.themeOwned(t.id), sel = m.themes.selected === t.id, locked = m.campaign.level < t.req;
+    const d = document.createElement("div");
+    d.className = "theme" + (sel ? " sel" : "") + (locked && !owned ? " locked" : "");
+    d.style.background = `linear-gradient(160deg, ${t.bg2}, ${t.bg1})`;
+    d.innerHTML = `<span class="tname">${t.name}</span><span class="tstate">${sel ? "Selected" : owned ? "Owned" : locked ? "Lv" + t.req : fmt(t.cost) + " \u{1F4B0}"}</span>`;
+    d.addEventListener("click", () => {
+      if (owned) { m.selectTheme(t.id); applyTheme(); refresh(); }
+      else { const r = m.buyTheme(t.id); if (r.ok) { applyTheme(); toast(t.name + " unlocked!"); } else toast(r.reason === "locked" ? "Reach level " + t.req : "Not enough coins"); refresh(); }
+    });
+    tg.appendChild(d);
+  }
+}
+
+// ---------------------------------------------------------------- daily gift / fortune wheel
+function onGift() {
+  const m = app.model;
+  if (!m.streakClaimable()) { toast("Come back tomorrow for day " + ((m.streak.day % 7) + 1)); return; }
+  const day = (m.streak.lastClaimDay === m._dayKey() - 1) ? (m.streak.day % 7) + 1 : 1;
+  const reward = STREAK_REWARDS[day - 1];
+  modal("Daily gift \u{1F381}", `Day ${day} of 7 \u2014 claim ${reward} coins, or watch a short ad to double it.`, [
+    { label: "Claim +" + reward + " \u{1F4B0}", primary: true, onClick: () => { const r = m.claimStreak(); if (r.ok) { toast("+" + r.reward + " \u{1F4B0} (day " + r.day + ")"); blip(640, 0.14, "triangle", 0.06); } closeModal(); refresh(); } },
+    { label: "Claim + double (watch ad)", onClick: async () => { const ok = await Platform.showRewarded(); const r = m.claimStreak(); if (r.ok) { if (ok && m.rewardedLeft("streak") > 0) { m.rewardedUse("streak"); m.coins += r.reward; } toast("+" + (ok ? r.reward * 2 : r.reward) + " \u{1F4B0}"); } closeModal(); refresh(); } },
+    { label: "Later", onClick: closeModal },
+  ]);
+}
+function onWheel() {
+  const m = app.model;
+  const free = m.wheelFreeAvailable();
+  const adLeft = m.rewardedLeft("wheel");
+  const alt = REWARDED.wheel.coinsAlt;
+  modal("Fortune Wheel \u{1F3A1}", "Spin for coins, energy or a booster.", [
+    { label: free ? "Free spin" : (adLeft > 0 ? "Spin \u2014 watch a short ad" : "Ad spins used up today"), primary: free || adLeft > 0,
+      onClick: async () => {
+        if (free) m.consumeFreeSpin();
+        else if (adLeft > 0) { const ok = await Platform.showRewarded(); if (!ok) { closeModal(); return; } m.rewardedUse("wheel"); }
+        else return;
+        const r = m.spinWheel(); toast("Wheel: " + r.segment.label); blip(700, 0.16, "triangle", 0.06); closeModal(); refresh();
+      } },
+    { label: `Spin for ${alt} \u{1F4B0}`, onClick: () => { if (m.coins < alt) { toast("Not enough coins"); return; } m.coins -= alt; const r = m.spinWheel(); toast("Wheel: " + r.segment.label); closeModal(); refresh(); } },
+    { label: "Close", onClick: closeModal },
+  ]);
+}
+function offerDouble(amount) {
+  modal("Nice order! \u{1F389}", `Double your reward \u2014 ${amount} more coins.`, [
+    { label: `Double it (+${amount} \u{1F4B0}) \u2014 watch ad`, primary: true, onClick: async () => { const ok = await Platform.showRewarded(); if (ok) { app.model.coins += amount; toast("+" + amount + " \u{1F4B0}"); blip(600, 0.12, "triangle", 0.05); } closeModal(); refresh(); } },
+    { label: "No thanks", onClick: closeModal },
+  ]);
 }
 
 // ---------------------------------------------------------------- board-rest
@@ -1097,7 +1421,10 @@ function showSettings() {
 
 // ---------------------------------------------------------------- persistence
 setInterval(() => Platform.setSave(app.model.serialize()), 15000);
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") Platform.setSave(app.model.serialize()); });
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") { Platform.setSave(app.model.serialize()); Platform.gameplayStop(); }
+  else Platform.gameplayStart();
+});
 
 window.addEventListener("load", init);
 

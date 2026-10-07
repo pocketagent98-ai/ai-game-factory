@@ -146,5 +146,51 @@ t("new upgrades raise their effects", () => {
   assert.ok(m.orderSlotCount > slots); assert.equal(m.orders.length, m.orderSlotCount);
 });
 
+// ---- v3 systems ----
+t("campaign level completes and rewards", () => {
+  const m = new GameModel(); m.campaign.done = true; const c0 = m.coins;
+  const r = m.claimLevel(); assert.ok(r.ok); assert.ok(m.coins > c0); assert.equal(m.campaign.level, 2);
+});
+
+t("boss levels are every 5th", () => {
+  const m = new GameModel();
+  assert.equal(m.levelGoalDef.boss, false);
+  m.campaign.level = 5; assert.equal(m.levelGoalDef.boss, true);
+});
+
+t("themes unlock by level and cost coins", () => {
+  const m = new GameModel(); m.coins = 5000;
+  assert.equal(m.buyTheme("ocean").ok, false);            // needs level 5
+  m.campaign.level = 6;
+  assert.ok(m.buyTheme("ocean").ok); assert.ok(m.themeOwned("ocean")); assert.equal(m.themes.selected, "ocean");
+});
+
+t("leaderboard includes the player and is sorted", () => {
+  const m = new GameModel(); const rows = m.leaderboard();
+  assert.ok(rows.some(r => r.me)); assert.equal(rows.length, C.LB_NAMES.length + 1);
+  for (let i = 1; i < rows.length; i++) assert.ok(rows[i-1].score >= rows[i].score);
+});
+
+t("daily streak advances and pays", () => {
+  const m = new GameModel(); const now = Date.now(); const c0 = m.coins;
+  const r = m.claimStreak(now); assert.ok(r.ok); assert.equal(r.day, 1); assert.ok(m.coins > c0);
+  assert.equal(m.claimStreak(now).ok, false);              // once per day
+});
+
+t("fortune wheel grants a segment", () => {
+  const m = new GameModel(); m.energy = 0;
+  const c0 = m.coins; let granted = 0;
+  for (let i = 0; i < 6; i++) { const r = m.spinWheel(); assert.ok(r.ok && r.segment); if (m.coins !== c0 || m.energy !== 0) granted++; }
+  assert.ok(granted > 0);
+});
+
+t("rush hour doubles merge coins", () => {
+  const m = new GameModel(); const now = Date.now();
+  m.grid[0]=3; m.grid[1]=3; const a = m.tryMerge(0,1,now).coins;
+  const m2 = new GameModel(); m2.rushUntil = now + 5000; m2.grid[0]=3; m2.grid[1]=3;
+  const b = m2.tryMerge(0,1,now).coins;
+  assert.ok(b > a);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

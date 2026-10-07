@@ -24,7 +24,7 @@ class El {
   getContext() { return ctx; }
 }
 const store = {};
-const doc = { getElementById(id) { return store[id] || (store[id] = new El(id)); }, createElement() { return new El(); }, addEventListener() {}, visibilityState: "visible" };
+const doc = { getElementById(id) { return store[id] || (store[id] = new El(id)); }, createElement() { return new El(); }, addEventListener() {}, visibilityState: "visible", documentElement: { style: { setProperty() {} } } };
 doc.getElementById("board").parentElement = new El();
 
 const winL = {};
@@ -45,7 +45,9 @@ const orders = n("orders"), plots = n("gardenGrid"), ups = n("upgradesList"), mi
 console.log(`orders=${orders} plots=${plots} upgrades=${ups} missions=${missions} boosters=${boosters}`);
 console.log("draw calls:", JSON.stringify(CALLS));
 if (errs.length) { console.log("ERRORS:\n" + errs.join("\n")); process.exit(1); }
-if (orders !== 4 || plots !== 12 || ups !== 10 || missions !== 3 || boosters !== 3) { console.log("FAIL: DOM not built as expected"); process.exit(1); }
+const campaign = n("campaignCard"), lb = n("leaderboardList"), themes = n("themesGrid");
+console.log(`campaign=${campaign} leaderboard=${lb} themes=${themes}`);
+if (orders !== 4 || plots !== 12 || ups !== 10 || missions !== 3 || boosters !== 3 || lb < 5 || themes !== 6) { console.log("FAIL: DOM not built as expected"); process.exit(1); }
 if (CALLS.fill < 36) { console.log("FAIL: board did not draw its cells"); process.exit(1); }
 console.log("SMOKE OK — v2 boots, draws the board, and builds orders/tasks/upgrades/boosters with no runtime errors");
 process.exit(0);

@@ -10,16 +10,14 @@ The game is a **static HTML5 build** (no build step). Everything you need to pub
 - **Description + controls text** (English mandatory).
 - **Privacy-policy URL** (required if anything links externally).
 
-## 2. Integrate the platform ads (do this first)
-Edit `js/platform.js` and replace the stub bodies with **Playgama Bridge** calls (one SDK covers all six portals):
-```js
-// in init():   await bridge.initialize();  this.name = bridge.platform.id;
-// sendMessage('game_ready') when the first playable frame is ready
-// gameplayStart()/gameplayStop() on play/pause
-// interstitial at natural breaks; rewarded on explicit action
-// saves via bridge.storage
+## 2. Integrate the platform ads (already wired — verify per portal)
+`js/platform.js` **already integrates Playgama Bridge** (LGPL-3.0): it calls `bridge.initialize()`, uses `bridge.storage` for saves, `bridge.advertisement.showInterstitial()` / `showRewarded()`, and the platform pause/audio events — with a **standalone fallback** (localStorage + simulated ads) when Bridge is absent.
+
+The Bridge SDK is loaded in `index.html`:
+```html
+<script src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>
 ```
-Bridge is **LGPL-3.0** and is the single integration for Poki, CrazyGames, GameDistribution, Yandex, Playgama, YouTube Playables, MSN, Discord and more. **Ads are served by the platform — never bundle your own ad network (no AdMob/AdSense).**
+Bridge is the single integration for Poki, CrazyGames, GameDistribution, Yandex, Playgama, YouTube Playables, MSN, Discord and more. **Ads are served by the platform — never bundle your own ad network (no AdMob/AdSense).** If a portal blocks external scripts, bundle the Bridge file locally or use that portal's native SDK in the same `Platform` interface.
 
 ## 3. Per-portal checklist
 

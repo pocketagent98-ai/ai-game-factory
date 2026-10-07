@@ -84,9 +84,60 @@ export const MISSION_POOL = [
 
 export const REWARDED = {
   energy:        { cap: ENERGY_REWARDED_DAILY, coinsAlt: 100 },
+  coins:         { cap: 6, coinsAlt: 0 },   // "free coins" ad (shop placement)
+  wheel:         { cap: 3, coinsAlt: 120 },
+  streak:        { cap: 1, coinsAlt: 0 },   // ad to double the daily-streak reward
   cooldown:      { cap: 3, coinsAlt: 50 },
   luckyBloom:    { cap: 3, coinsAlt: 150 },
   refreshOrders: { cap: 2, coinsAlt: 40 },
   chest:         { cap: 6, coinsAlt: 250 },
   doubleHarvest: { cap: 1, coinsAlt: 0 },
 };
+
+// ================= v3: campaign (levels + bosses), themes, leaderboard, =====
+// ================= streak, fortune wheel, double-reward offers =============
+
+// --- Campaign: numbered levels; every 5th is a BOSS with a harder goal ---
+export const BOSS_EVERY = 5;
+export function levelGoal(n) {
+  if (n % BOSS_EVERY === 0) return { type: "tier", target: Math.min(12, 4 + Math.floor(n / BOSS_EVERY)), boss: true };
+  const cycle = n % 3;
+  if (cycle === 1) return { type: "merge", target: 10 + n * 5, boss: false };
+  if (cycle === 2) return { type: "order", target: 2 + Math.floor(n / 2), boss: false };
+  return { type: "spawn", target: 15 + n * 4, boss: false };
+}
+export const LEVEL_REWARD_BASE = 150;
+
+// --- Garden themes (cosmetic; unlocked by campaign level, bought with coins) ---
+export const THEMES = [
+  { id: "meadow",   name: "Meadow",   req: 1,  cost: 0,    bg1: "#0f3d2e", bg2: "#124b39", panel: "#173e33", accent: "#7ef0b0" },
+  { id: "sunset",   name: "Sunset",   req: 3,  cost: 600,  bg1: "#3a1d2e", bg2: "#5a2a3a", panel: "#4a2333", accent: "#ffb37e" },
+  { id: "ocean",    name: "Ocean",    req: 5,  cost: 1200, bg1: "#0d2b3e", bg2: "#12415a", panel: "#123448", accent: "#7ecbff" },
+  { id: "lavender", name: "Lavender", req: 8,  cost: 2000, bg1: "#241a3a", bg2: "#352a55", panel: "#2b2145", accent: "#c9a7ff" },
+  { id: "autumn",   name: "Autumn",   req: 11, cost: 3200, bg1: "#3a2410", bg2: "#5a3a18", panel: "#4a2f14", accent: "#ffcf7e" },
+  { id: "midnight", name: "Midnight", req: 15, cost: 5000, bg1: "#10131f", bg2: "#1b2033", panel: "#171c2c", accent: "#9fb8ff" },
+];
+
+// --- Daily login streak (7-day cycle) ---
+export const STREAK_REWARDS = [120, 180, 250, 320, 400, 500, 800];
+
+// --- Fortune wheel ---
+export const WHEEL = [
+  { label: "120",     coins: 120 },
+  { label: "25\u26A1", energy: 25 },
+  { label: "250",     coins: 250 },
+  { label: "Shovel",  booster: "shovel" },
+  { label: "400",     coins: 400 },
+  { label: "Mixer",   booster: "mixer" },
+  { label: "700",     coins: 700 },
+  { label: "JACKPOT", coins: 1500 },
+];
+export const WHEEL_FREE_PER_DAY = 1;
+export const WHEEL_AD_SPINS = 3;
+
+// --- Leaderboard (local simulated rivals; a real build can use Bridge leaderboards) ---
+export const LB_NAMES = ["BloomMaster", "Petal", "VineKing", "SunnyBee", "RootRunner", "Pixie", "Fern", "Mossy", "Tulip", "Willow", "Sage", "Clover"];
+
+// --- Rush hour: a periodic double-coins window (keeps players playing) ---
+export const RUSH_EVERY_MS = 6 * 60 * 1000;
+export const RUSH_MS = 45 * 1000;

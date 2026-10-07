@@ -36,6 +36,15 @@ export class GameModel {
     this.nextChestAt = Date.now() + C.CHEST_FIRST_MS;
     this.boosters = { shovel: 1, mixer: 1, lucky: 1 };
 
+    // v3 systems
+    this.totalMerges = 0;
+    this.campaign = { level: 1, progress: 0, done: false, boss: C.levelGoal(1).boss };
+    this.themes = { owned: ["meadow"], selected: "meadow" };
+    this.streak = { day: 0, lastClaimDay: -1 };
+    this.wheel = { lastFreeDay: -1, adSpinsToday: 0 };
+    this.rushUntil = 0;
+    this.rushNextAt = Date.now() + C.RUSH_EVERY_MS;
+
     const day = this._dayKey();
     this.daily = { rewardedCounts: {}, dayKey: day, missionDay: day };
     this.missions = [];
@@ -125,7 +134,8 @@ export class GameModel {
     const frenzyJust = this.combo >= C.FRENZY_COMBO && now >= this.frenzyUntil;
     if (frenzyJust) this.frenzyUntil = now + C.FRENZY_MS;
 
-    const mult = this.comboMultiplier() * (this.frenzyActive ? 2 : 1) * this.mergeValueMult;
+    this.totalMerges = (this.totalMerges || 0) + 1;
+    const mult = this.comboMultiplier() * (this.frenzyActive ? 2 : 1) * (this.rushActive ? 2 : 1) * this.mergeValueMult;
     const coins = Math.round(C.TIERS[tier].value * mult);
 
     this.grid[to] = tier + 1;
@@ -176,7 +186,7 @@ export class GameModel {
       let need = it.qty;
       for (let i = 0; i < this.grid.length && need > 0; i++) { if (this.grid[i] === it.tier) { this.grid[i] = 0; need--; } }
     }
-    const bonus = this.frenzyActive ? 2 : 1;
+    const bonus = (this.frenzyActive ? 2 : 1) * (this.rushActive ? 2 : 1);
     const reward = o.reward * bonus;
     this.coins += reward;
     this.addXp(3);
@@ -254,7 +264,75 @@ export class GameModel {
       else m.progress += value;
       if (m.progress >= m.target) { m.progress = m.target; m.done = true; }
     }
+    this._campaignProgress(type, value);
   }
+
+  // ---- campaign (levels + bosses) --------------------------------------
+  get rushActive() { return Date.now() < this.rushUntil; }
+  get levelGoalDef() { return C.levelGoal(this.campaign.level); }
+
+  _campaignProgress(type, value) {
+    const g = this.levelGoalDef;
+    if (g.type !== type) return;
+    if (type === "tier") this.campaign.progress = Math.max(this.campaign.progress, value);
+    else this.campaign.progress += value;
+    if (this.campaign.progress >= g.target) this.campaign.done = true;
+  }
+
+  claimLevel() {
+    if (!this.campaign.done) return { ok: false };
+    const lvl = this.campaign.level;
+    const reward = Math.round(C.LEVEL_REWARD_BASE * (1 + lvl * 0.25) * (this.campaign.boss ? 2 : 1));
+    this.coins += reward;
+    if (this.campaign.boss) this.boosters.lucky = (this.boosters.lucky || 0) + 1;
+    this.campaign = { level: lvl + 1, progress: 0, done: false, boss: C.levelGoal(lvl + 1).boss };
+    return { ok: true, reward, level: lvl + 1 };
+  }
+
+  // ---- themes -----------------------------------------------------------
+  themeOwned(id) { return this.themes.owned.includes(id); }
+  buyTheme(id) {
+    const t = C.THEMES.find(x => x.id === id); if (!t) return { ok: false };
+    if (this.themeOwned(id)) { this.themes.selected = id; return { ok: true }; }
+    if (this.campaign.level < t.req) return { ok: false, reason: "locked" };
+    if (this.coins < t.cost) return { ok: false, reason: "coins" };
+    this.coins -= t.cost; this.themes.owned.push(id); this.themes.selected = id;
+    return { ok: true };
+  }
+  selectTheme(id) { if (!this.themeOwned(id)) return { ok: false }; this.themes.selected = id; return { ok: true }; }
+
+  // ---- leaderboard ------------------------------------------------------
+  score() { return this.coins + this.level * 500 + this.bestCombo * 200 + (this.campaign.level - 1) * 1500 + (this.totalMerges || 0) * 10; }
+  leaderboard(now = Date.now()) {
+    const seed = Math.floor(now / 86400000);
+    const rows = C.LB_NAMES.map((n, i) => ({ name: n, score: Math.round(600 + ((seed * (i + 3)) % 97) * 130 + i * 450) }));
+    rows.push({ name: "You", score: this.score(), me: true });
+    rows.sort((a, b) => b.score - a.score);
+    return rows;
+  }
+
+  // ---- daily login streak ----------------------------------------------
+  streakClaimable(now = Date.now()) { return this.streak.lastClaimDay !== this._dayKey(now); }
+  claimStreak(now = Date.now()) {
+    if (!this.streakClaimable(now)) return { ok: false, reason: "claimed" };
+    const y = this._dayKey(now);
+    if (this.streak.lastClaimDay === y - 1) this.streak.day = (this.streak.day % 7) + 1; else this.streak.day = 1;
+    this.streak.lastClaimDay = y;
+    const reward = C.STREAK_REWARDS[this.streak.day - 1];
+    this.coins += reward;
+    return { ok: true, day: this.streak.day, reward };
+  }
+
+  // ---- fortune wheel ----------------------------------------------------
+  wheelFreeAvailable(now = Date.now()) { return this.wheel.lastFreeDay !== this._dayKey(now); }
+  spinWheel() {
+    const seg = C.WHEEL[Math.floor(this._roll() * C.WHEEL.length)];
+    if (seg.coins) this.coins += seg.coins;
+    if (seg.energy) this.energy = Math.min(this.energyCap, this.energy + seg.energy);
+    if (seg.booster) this.boosters[seg.booster] = (this.boosters[seg.booster] || 0) + 1;
+    return { ok: true, segment: seg };
+  }
+  consumeFreeSpin(now = Date.now()) { this.wheel.lastFreeDay = this._dayKey(now); }
 
   claimMission(i) {
     const m = this.missions[i];
@@ -298,6 +376,7 @@ export class GameModel {
       case "luckyBloom": { const cells = this.emptyCells(); if (cells.length) this.grid[cells[Math.floor(this._roll() * cells.length)]] = 4; break; }
       case "refreshOrders": this.genOrders(); break;
       case "doubleHarvest": break;
+      case "coins": this.coins += 150; break;
     }
     return { ok: true };
   }
@@ -307,6 +386,7 @@ export class GameModel {
     this.regenEnergy(now);
     if (this.combo > 0 && now >= this.comboExpires) this.combo = 0;
     if (!this.chestReady && now >= this.nextChestAt) this.chestReady = true;
+    if (now >= this.rushNextAt) { this.rushUntil = now + C.RUSH_MS; this.rushNextAt = now + C.RUSH_EVERY_MS; }
     if (this.upgrades.autoProducer > 1) {
       const interval = Math.max(10, 40 - this.upgrades.autoProducer * 4);
       this.autoCarry += 1;
@@ -325,7 +405,8 @@ export class GameModel {
       bloom: this.bloom, plots: this.plots, upgrades: this.upgrades, podCharge: this.podCharge,
       podCooldownEnds: this.podCooldownEnds, lastCollect: this.lastCollect, orders: this.orders,
       daily: this.daily, missions: this.missions, boosters: this.boosters, bestCombo: this.bestCombo,
-      nextChestAt: this.nextChestAt,
+      nextChestAt: this.nextChestAt, totalMerges: this.totalMerges, campaign: this.campaign,
+      themes: this.themes, streak: this.streak, wheel: this.wheel, rushNextAt: this.rushNextAt,
     } };
   }
 
@@ -341,6 +422,8 @@ export class GameModel {
       orders: (s.orders && s.orders.length) ? s.orders : m.orders, daily: s.daily || m.daily,
       missions: (s.missions && s.missions.length) ? s.missions : m.missions,
       boosters: s.boosters || m.boosters, bestCombo: s.bestCombo || 0, nextChestAt: s.nextChestAt || (Date.now() + C.CHEST_FIRST_MS),
+      totalMerges: s.totalMerges || 0, campaign: s.campaign || m.campaign, themes: s.themes || m.themes,
+      streak: s.streak || m.streak, wheel: s.wheel || m.wheel, rushNextAt: s.rushNextAt || (Date.now() + C.RUSH_EVERY_MS),
     });
     m.lastTick = Date.now();
     if (m.daily.missionDay !== m._dayKey()) m._rollMissions();

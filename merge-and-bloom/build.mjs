@@ -25,6 +25,10 @@ const html = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0f3d2e">
 <title>Merge &amp; Bloom</title>
+<!-- Playgama Bridge: one SDK for Poki / CrazyGames / GameDistribution / Yandex / Playgama.
+     If this script is unavailable (file://, offline, or a portal that blocks external
+     requests), the game falls back to standalone saves + simulated ads automatically. -->
+<script src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>
 <style>
 ${css}
 </style>
@@ -52,10 +56,12 @@ ${css}
     <div class="combo-bar"><div id="comboFill" class="combo-fill"></div></div>
   </div>
   <div id="frenzyBanner" class="frenzy" style="display:none">\u{1F525} MERGE FRENZY \u00B7 <span id="frenzyTime">15s</span></div>
+  <div id="rushBanner" class="rush" style="display:none">\u26A1 RUSH HOUR \u00B7 double coins \u00B7 <span id="rushTime">45s</span></div>
 
   <nav class="tabs">
     <button id="tabMerge" class="tab active">Merge</button>
     <button id="tabGarden" class="tab">Garden</button>
+    <button id="tabLevels" class="tab">Levels</button>
     <button id="tabTasks" class="tab">Tasks</button>
     <button id="tabUpgrades" class="tab">Upgrades</button>
   </nav>
@@ -77,6 +83,14 @@ ${css}
       <p class="hint">Plants keep producing coins while you're away (offline cap applies). Tap an empty plot to plant your highest-tier item.</p>
     </section>
 
+    <section id="panelLevels" class="panel" style="display:none">
+      <div id="campaignCard" class="upg campaign"></div>
+      <div class="panel-head">Leaderboard</div>
+      <div id="leaderboardList" class="lb"></div>
+      <div class="panel-head">Garden themes</div>
+      <div id="themesGrid" class="themes"></div>
+    </section>
+
     <section id="panelTasks" class="panel" style="display:none">
       <div class="panel-head">Daily missions</div>
       <div id="missionsList" class="upgrades"></div>
@@ -90,6 +104,8 @@ ${css}
   </main>
 
   <button id="chestBtn" class="chest-btn" aria-label="Reward chest">\u{1F381}</button>
+  <button id="giftBtn" class="chest-btn gift" aria-label="Daily gift">\u{1F381}\u2728</button>
+  <button id="wheelBtn" class="chest-btn wheel" aria-label="Fortune wheel">\u{1F3A1}</button>
   <div id="toast" class="toast"></div>
   <div id="modalRoot"></div>
 </div>

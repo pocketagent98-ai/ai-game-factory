@@ -25,6 +25,19 @@ A **portrait HTML5 merge-2 puzzle with an idle “grow-a-garden” meta** — bu
 - **10 upgrades** — energy cap, regen, seed pod, merge value, combo window, order slots, lucky drop, garden efficiency, offline cap, auto-producer.
 - **Better orders & UI** — live item progress (n/needed), clearer buttons, upgrade levels, and affordability dimming.
 
+## New in v3 — progression, customisation & more ad moments
+- **Campaign levels + Bosses** — numbered levels with clear goals; every 5th level is a **Boss** with a harder goal and a double reward (+ a free Lucky booster). New **Levels** tab.
+- **Garden themes** — 6 cosmetic themes (Meadow, Sunset, Ocean, Lavender, Autumn, Midnight) unlocked by campaign level and bought with coins; recolours the whole game instantly.
+- **Leaderboard** — a daily-sorted ranking (local rivals + you); a real build can switch it to Playgama Bridge leaderboards.
+- **Daily login streak** — 7-day reward cycle with an **ad-to-double** option.
+- **Fortune Wheel** — free daily spin + up to 3 **ad spins** per day (coins / energy / boosters / jackpot).
+- **Rush Hour** — a periodic 45 s window where all coins are **doubled** (keeps sessions going).
+- **Double-your-reward offer** after every completed order — the highest-converting rewarded placement.
+- **"+150 coins (ad)" in the shop** — appears right when you can't afford an upgrade (resource-scarcity placement).
+- **Playgama Bridge integrated** — `js/platform.js` now uses the real Bridge SDK (ads, saves, lifecycle) with an automatic standalone fallback.
+
+> Ad placements follow the proven hybridcasual playbook: reward multiplier (double), fortune-wheel extra spins, free chest / event entry, speed-ups, and daily rewards — all opt-in, all with a non-ad alternative.
+
 ## Why this concept
 
 Chosen from a deep market study of the seven portals: **merge is the fastest-growing casual mechanic**, web demand is proven but high-quality web merge supply is thin, and the merge + idle-garden hybrid fits the web rewarded-ad economy perfectly. Full evidence in the companion research repo (see below).
