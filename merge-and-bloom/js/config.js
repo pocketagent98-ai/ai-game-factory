@@ -121,19 +121,32 @@ export const THEMES = [
 // --- Daily login streak (7-day cycle) ---
 export const STREAK_REWARDS = [120, 180, 250, 320, 400, 500, 800];
 
-// --- Fortune wheel ---
+// --- Fortune wheel (decide the segment first, then animate to it) ---
 export const WHEEL = [
-  { label: "120",     coins: 120 },
-  { label: "25\u26A1", energy: 25 },
-  { label: "250",     coins: 250 },
-  { label: "Shovel",  booster: "shovel" },
-  { label: "400",     coins: 400 },
-  { label: "Mixer",   booster: "mixer" },
-  { label: "700",     coins: 700 },
-  { label: "JACKPOT", coins: 1500 },
+  { label: "120",     coins: 120,  rarity: "common",  glyph: "\u{1F4B0}" },
+  { label: "25\u26A1", energy: 25,  rarity: "common",  glyph: "\u26A1" },
+  { label: "250",     coins: 250,  rarity: "common",  glyph: "\u{1F4B0}" },
+  { label: "Shovel",  booster: "shovel", rarity: "rare", glyph: "\u{1FAA3}" },
+  { label: "400",     coins: 400,  rarity: "rare",    glyph: "\u{1F4B0}" },
+  { label: "Mixer",   booster: "mixer",  rarity: "rare", glyph: "\u{1F500}" },
+  { label: "700",     coins: 700,  rarity: "epic",    glyph: "\u{1F48E}" },
+  { label: "JACKPOT", coins: 1500, rarity: "jackpot", glyph: "\u{1F3C6}" },
 ];
+export const WHEEL_COLORS = ["#2ea36b", "#3a5c8a", "#b8860b", "#7a4b8a", "#2e8ba3", "#a35c3a", "#8a3a5c", "#c9a227"];
 export const WHEEL_FREE_PER_DAY = 1;
 export const WHEEL_AD_SPINS = 3;
+export const WHEEL_FREE_COOLDOWN_MS = 5 * 60 * 1000;   // after the free spin, a new free one every 5 min
+
+// --- Achievements (unlock + reward) ---
+export const ACHIEVEMENTS = [
+  { id: "first",    text: "Make your first merge",        reward: 100, check: (m) => m.totalMerges >= 1 },
+  { id: "combo5",   text: "Reach a x5 combo",             reward: 250, check: (m) => m.bestCombo >= 5 },
+  { id: "tier8",    text: "Merge a Crystal Bloom (T8)",   reward: 400, check: (m) => m.maxTier >= 8 },
+  { id: "orders25", text: "Complete 25 visitor orders",    reward: 350, check: (m) => m.totalOrders >= 25 },
+  { id: "level5",   text: "Reach campaign level 5",       reward: 500, check: (m) => m.campaign.level >= 5 },
+  { id: "wheel5",   text: "Spin the wheel 5 times",        reward: 300, check: (m) => m.wheel.spins >= 5 },
+  { id: "gardener", text: "Plant 6 Garden plots",          reward: 450, check: (m) => m.plots.filter((t) => t > 0).length >= 6 },
+];
 
 // --- Leaderboard (local simulated rivals; a real build can use Bridge leaderboards) ---
 export const LB_NAMES = ["BloomMaster", "Petal", "VineKing", "SunnyBee", "RootRunner", "Pixie", "Fern", "Mossy", "Tulip", "Willow", "Sage", "Clover"];

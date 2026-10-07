@@ -22,7 +22,8 @@ class El {
   get innerHTML() { return this._h; }
   get children() { return this._c; }
   appendChild(c) { this._c.push(c); return c; }
-  addEventListener() {}
+  addEventListener(t, f) { (this._l = this._l || {}); (this._l[t] = this._l[t] || []).push(f); }
+  click() { (this._l && this._l.click || []).forEach((f) => f({})); }
   querySelector() { return new El(); }
   getBoundingClientRect() { return { left: 0, top: 0, width: 400, height: 400 }; }
   getContext() { return ctx; }
@@ -45,13 +46,20 @@ await new Promise(r => setTimeout(r, 30));
 console.error = oe;
 
 const n = (id) => doc.getElementById(id).children.length;
+// exercise the Fortune Wheel: tap it and confirm the wheel canvas is drawn + buttons appear
+const fillsBefore = CALLS.fill;
+doc.getElementById("wheelBtn").click();
+const wheelFills = CALLS.fill - fillsBefore;
+const wheelBtns = n("wheelBtns");
+console.log(`wheel draw calls=${wheelFills} wheel buttons=${wheelBtns}`);
 const orders = n("orders"), plots = n("gardenGrid"), ups = n("upgradesList"), missions = n("missionsList"), boosters = n("boosters");
 console.log(`orders=${orders} plots=${plots} upgrades=${ups} missions=${missions} boosters=${boosters}`);
 console.log("draw calls:", JSON.stringify(CALLS));
 if (errs.length) { console.log("ERRORS:\n" + errs.join("\n")); process.exit(1); }
-const campaign = n("campaignCard"), lb = n("leaderboardList"), themes = n("themesGrid");
-console.log(`campaign=${campaign} leaderboard=${lb} themes=${themes}`);
-if (orders !== 4 || plots !== 12 || ups !== 10 || missions !== 3 || boosters !== 3 || lb < 5 || themes !== 6) { console.log("FAIL: DOM not built as expected"); process.exit(1); }
+const campaign = n("campaignCard"), lb = n("leaderboardList"), themes = n("themesGrid"), ach = n("achievementsList");
+console.log(`campaign=${campaign} leaderboard=${lb} themes=${themes} achievements=${ach}`);
+if (orders !== 4 || plots !== 12 || ups !== 10 || missions !== 3 || boosters !== 3 || lb < 5 || themes !== 6 || ach !== 7) { console.log("FAIL: DOM not built as expected"); process.exit(1); }
 if (CALLS.fill < 36) { console.log("FAIL: board did not draw its cells"); process.exit(1); }
+if (wheelFills < 8 || wheelBtns < 3) { console.log("FAIL: fortune wheel did not draw/populate"); process.exit(1); }
 console.log("SMOKE OK — v2 boots, draws the board, and builds orders/tasks/upgrades/boosters with no runtime errors");
 process.exit(0);

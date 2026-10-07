@@ -38,10 +38,13 @@ export class GameModel {
 
     // v3 systems
     this.totalMerges = 0;
+    this.totalOrders = 0;
+    this.maxTier = 1;
+    this.achievements = {};
     this.campaign = { level: 1, progress: 0, done: false, boss: C.levelGoal(1).boss };
     this.themes = { owned: ["meadow"], selected: "meadow" };
     this.streak = { day: 0, lastClaimDay: -1 };
-    this.wheel = { lastFreeDay: -1, adSpinsToday: 0 };
+    this.wheel = { spins: 0, nextFreeAt: 0, lastFreeDay: -1 };
     this.rushUntil = 0;
     this.rushNextAt = Date.now() + C.RUSH_EVERY_MS;
 
@@ -135,6 +138,7 @@ export class GameModel {
     if (frenzyJust) this.frenzyUntil = now + C.FRENZY_MS;
 
     this.totalMerges = (this.totalMerges || 0) + 1;
+    this.maxTier = Math.max(this.maxTier || 1, tier + 1);
     const mult = this.comboMultiplier() * (this.frenzyActive ? 2 : 1) * (this.rushActive ? 2 : 1) * this.mergeValueMult;
     const coins = Math.round(C.TIERS[tier].value * mult);
 
@@ -191,6 +195,7 @@ export class GameModel {
     this.coins += reward;
     this.addXp(3);
     this.orders[idx] = this._makeOrder(this.currentBand());
+    this.totalOrders = (this.totalOrders || 0) + 1;
     this._progress("order", 1);
     return { ok: true, reward };
   }
@@ -324,15 +329,26 @@ export class GameModel {
   }
 
   // ---- fortune wheel ----------------------------------------------------
-  wheelFreeAvailable(now = Date.now()) { return this.wheel.lastFreeDay !== this._dayKey(now); }
-  spinWheel() {
-    const seg = C.WHEEL[Math.floor(this._roll() * C.WHEEL.length)];
+  wheelFreeAvailable(now = Date.now()) { return now >= (this.wheel.nextFreeAt || 0); }
+  wheelFreeIn(now = Date.now()) { return Math.max(0, Math.ceil(((this.wheel.nextFreeAt || 0) - now) / 1000)); }
+  pickWheel() { const i = Math.floor(this._roll() * C.WHEEL.length); return { index: i, segment: C.WHEEL[i] }; }
+  applyWheel(seg) {
     if (seg.coins) this.coins += seg.coins;
     if (seg.energy) this.energy = Math.min(this.energyCap, this.energy + seg.energy);
     if (seg.booster) this.boosters[seg.booster] = (this.boosters[seg.booster] || 0) + 1;
-    return { ok: true, segment: seg };
+    this.wheel.spins = (this.wheel.spins || 0) + 1;
   }
-  consumeFreeSpin(now = Date.now()) { this.wheel.lastFreeDay = this._dayKey(now); }
+  spinWheel() { const p = this.pickWheel(); this.applyWheel(p.segment); return { ok: true, segment: p.segment, index: p.index }; }
+  consumeFreeSpin(now = Date.now()) { this.wheel.nextFreeAt = now + C.WHEEL_FREE_COOLDOWN_MS; }
+
+  // ---- achievements -----------------------------------------------------
+  checkAchievements() {
+    const unlocked = [];
+    for (const a of C.ACHIEVEMENTS) {
+      if (!this.achievements[a.id] && a.check(this)) { this.achievements[a.id] = true; this.coins += a.reward; unlocked.push(a); }
+    }
+    return unlocked;
+  }
 
   claimMission(i) {
     const m = this.missions[i];
@@ -405,7 +421,8 @@ export class GameModel {
       bloom: this.bloom, plots: this.plots, upgrades: this.upgrades, podCharge: this.podCharge,
       podCooldownEnds: this.podCooldownEnds, lastCollect: this.lastCollect, orders: this.orders,
       daily: this.daily, missions: this.missions, boosters: this.boosters, bestCombo: this.bestCombo,
-      nextChestAt: this.nextChestAt, totalMerges: this.totalMerges, campaign: this.campaign,
+      nextChestAt: this.nextChestAt, totalMerges: this.totalMerges, totalOrders: this.totalOrders, maxTier: this.maxTier,
+      achievements: this.achievements, campaign: this.campaign,
       themes: this.themes, streak: this.streak, wheel: this.wheel, rushNextAt: this.rushNextAt,
     } };
   }
@@ -422,7 +439,8 @@ export class GameModel {
       orders: (s.orders && s.orders.length) ? s.orders : m.orders, daily: s.daily || m.daily,
       missions: (s.missions && s.missions.length) ? s.missions : m.missions,
       boosters: s.boosters || m.boosters, bestCombo: s.bestCombo || 0, nextChestAt: s.nextChestAt || (Date.now() + C.CHEST_FIRST_MS),
-      totalMerges: s.totalMerges || 0, campaign: s.campaign || m.campaign, themes: s.themes || m.themes,
+      totalMerges: s.totalMerges || 0, totalOrders: s.totalOrders || 0, maxTier: s.maxTier || 1,
+      achievements: s.achievements || {}, campaign: s.campaign || m.campaign, themes: s.themes || m.themes,
       streak: s.streak || m.streak, wheel: s.wheel || m.wheel, rushNextAt: s.rushNextAt || (Date.now() + C.RUSH_EVERY_MS),
     });
     m.lastTick = Date.now();

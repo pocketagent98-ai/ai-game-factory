@@ -38,6 +38,13 @@ A **portrait HTML5 merge-2 puzzle with an idle “grow-a-garden” meta** — bu
 
 > Ad placements follow the proven hybridcasual playbook: reward multiplier (double), fortune-wheel extra spins, free chest / event entry, speed-ups, and daily rewards — all opt-in, all with a non-ad alternative.
 
+## New in v4 — a real spinning wheel, achievements & a cleaner layout
+- **Real animated Fortune Wheel** — an actual 8-segment canvas wheel with a pointer, hub and prize labels. The prize is **decided in code first, then the wheel animates to it** (fair + deterministic), with a long ease-out, several turns, a **tick sound per segment**, and a **rarity** label on the result (common / rare / epic / jackpot).
+- **More spins = more ad moments** — a **free spin every 5 minutes**, up to **3 ad spins/day**, plus a coin spin (with a non-ad alternative). The wheel is the biggest opt-in ad driver in the game.
+- **Achievements** — 7 badges (first merge, ×5 combo, T8, 25 orders, campaign level 5, 5 spins, 6 planted plots) that unlock and pay coins automatically.
+- **Fixed layout** — the Chest / Gift / Wheel buttons now sit in a tidy **reward bar** above the Seed Pod (no more floating buttons overlapping the orders panel).
+- **Live "free spin in Xm"** countdown so players always know when to come back.
+
 ## Why this concept
 
 Chosen from a deep market study of the seven portals: **merge is the fastest-growing casual mechanic**, web demand is proven but high-quality web merge supply is thin, and the merge + idle-garden hybrid fits the web rewarded-ad economy perfectly. Full evidence in the companion research repo (see below).

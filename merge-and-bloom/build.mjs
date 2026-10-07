@@ -72,6 +72,11 @@ ${css}
     <section id="panelMerge" class="panel">
       <div class="board-wrap"><canvas id="board"></canvas></div>
       <div id="orders" class="orders"></div>
+      <div class="rewardbar">
+        <button id="chestBtn" class="rbtn" aria-label="Reward chest"><span class="ri">\u{1F381}</span><span class="rl">Chest</span></button>
+        <button id="giftBtn" class="rbtn" aria-label="Daily gift"><span class="ri">\u2728</span><span class="rl">Gift</span></button>
+        <button id="wheelBtn" class="rbtn" aria-label="Fortune wheel"><span class="ri">\u{1F3A1}</span><span class="rl">Wheel</span></button>
+      </div>
       <div class="actionbar">
         <div id="boosters" class="boosters"></div>
         <button id="podBtn" class="btn pod"><span id="podLabel">Tap Seed Pod</span></button>
@@ -96,6 +101,8 @@ ${css}
     <section id="panelTasks" class="panel" style="display:none">
       <div class="panel-head">Daily missions</div>
       <div id="missionsList" class="upgrades"></div>
+      <div class="panel-head">Achievements</div>
+      <div id="achievementsList" class="upgrades"></div>
       <p class="hint">Missions refresh every day. Claim them for bonus coins.</p>
     </section>
 
@@ -105,9 +112,6 @@ ${css}
     </section>
   </main>
 
-  <button id="chestBtn" class="chest-btn" aria-label="Reward chest">\u{1F381}</button>
-  <button id="giftBtn" class="chest-btn gift" aria-label="Daily gift">\u{1F381}\u2728</button>
-  <button id="wheelBtn" class="chest-btn wheel" aria-label="Fortune wheel">\u{1F3A1}</button>
   <div id="toast" class="toast"></div>
   <div id="modalRoot"></div>
 </div>

@@ -13,6 +13,8 @@ const app = {
   drag: null, tab: "merge", started: false,
   particles: [], floats: [], shakeUntil: 0, shakeMag: 0,
 };
+const wheelState = { canvas: null, ctx: null, angle: 0, spinning: false, size: 260 };
+const fmtTime = (s) => { const m = Math.floor(s / 60), ss = s % 60; return m > 0 ? m + "m " + ss + "s" : ss + "s"; };
 
 // ---------------------------------------------------------------- audio
 let actx = null;
@@ -67,7 +69,7 @@ async function init() {
   if (pending > 0) showWelcomeBack(pending);
 
   applyTheme();
-  buildOrders(); buildGarden(); buildLevels(); buildTasks(); buildUpgrades(); buildBoosters();
+  buildOrders(); buildGarden(); buildLevels(); buildTasks(); buildUpgrades(); buildBoosters(); buildAchievements();
   setTab("merge");
   requestAnimationFrame(loop);
   // late layout passes (mobile browsers can report 0 size before layout settles)
@@ -270,7 +272,11 @@ function updateHUD() {
   if (m.rushActive) $("rushTime").textContent = Math.ceil((m.rushUntil - Date.now()) / 1000) + "s";
 }
 
-function refresh() { buildOrders(); buildGarden(); buildLevels(); buildTasks(); buildUpgrades(); buildBoosters(); updateHUD(); render(); }
+function refresh() {
+  const unlocked = app.model.checkAchievements();
+  for (const a of unlocked) toast("\u{1F3C6} " + a.text + "  +" + a.reward + " \u{1F4B0}");
+  buildOrders(); buildGarden(); buildLevels(); buildTasks(); buildUpgrades(); buildBoosters(); buildAchievements(); updateHUD(); render();
+}
 
 function setTab(tab) {
   app.tab = tab;
@@ -279,7 +285,7 @@ function setTab(tab) {
     $("tab" + cap(t)).classList.toggle("active", t === tab);
   }
   if (tab === "garden") buildGarden();
-  if (tab === "tasks") buildTasks();
+  if (tab === "tasks") { buildTasks(); buildAchievements(); }
   if (tab === "upgrades") buildUpgrades();
 }
 
@@ -489,22 +495,118 @@ function onGift() {
     { label: "Later", onClick: closeModal },
   ]);
 }
+function buildAchievements() {
+  const el = $("achievementsList"); if (!el) return; el.innerHTML = "";
+  for (const a of C.ACHIEVEMENTS) {
+    const done = !!app.model.achievements[a.id];
+    const d = document.createElement("div");
+    d.className = "upg ach" + (done ? " done" : "");
+    d.innerHTML = `<div style="flex:1"><div class="upg-title">${done ? "\u2705 " : "\u{1F512} "}${a.text}</div><div class="upg-sub">+${a.reward} \u{1F4B0}</div></div>`;
+    el.appendChild(d);
+  }
+}
+
+// ---------------------------------------------------------------- fortune wheel (animated)
 function onWheel() {
-  const m = app.model;
+  closeModal();
+  const root = $("modalRoot");
+  const back = document.createElement("div");
+  back.className = "modal-back";
+  back.innerHTML = `<div class="modal wheel-modal">
+     <h3>Fortune Wheel \u{1F3A1}</h3>
+     <div class="wheel-stage"><canvas id="wheelCanvas"></canvas></div>
+     <div class="wheel-status" id="wheelStatus"></div>
+     <div class="modal-btns" id="wheelBtns"></div>
+   </div>`;
+  root.appendChild(back);
+  wheelState.canvas = document.getElementById("wheelCanvas");
+  const s = wheelState.size;
+  wheelState.canvas.width = s; wheelState.canvas.height = s;
+  wheelState.canvas.style.width = s + "px"; wheelState.canvas.style.height = s + "px";
+  wheelState.ctx = wheelState.canvas.getContext("2d");
+  drawWheel();
+  renderWheelButtons();
+}
+function drawWheel() {
+  const ctx = wheelState.ctx; if (!ctx) return;
+  const S = wheelState.size, cx = S / 2, cy = S / 2, R = S / 2 - 8;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, S, S);
+  const n = C.WHEEL.length, seg = Math.PI * 2 / n;
+  for (let i = 0; i < n; i++) {
+    const a0 = wheelState.angle + i * seg, a1 = a0 + seg;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, a0, a1); ctx.closePath();
+    ctx.fillStyle = C.WHEEL_COLORS[i % C.WHEEL_COLORS.length]; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.stroke();
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(a0 + seg / 2);
+    ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.fillStyle = "#fff";
+    ctx.font = "700 13px system-ui,sans-serif";
+    ctx.fillText(C.WHEEL[i].glyph + " " + C.WHEEL[i].label, R - 10, 0);
+    ctx.restore();
+  }
+  ctx.beginPath(); ctx.arc(cx, cy, 20, 0, Math.PI * 2); ctx.fillStyle = "#0b2a21"; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = "#ffd54f"; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, 2); ctx.lineTo(cx - 12, 28); ctx.lineTo(cx + 12, 28); ctx.closePath();
+  ctx.fillStyle = "#ffd54f"; ctx.fill();
+}
+function renderWheelButtons() {
+  const m = app.model, host = $("wheelBtns"); if (!host) return;
+  host.innerHTML = "";
   const free = m.wheelFreeAvailable();
   const adLeft = m.rewardedLeft("wheel");
   const alt = C.REWARDED.wheel.coinsAlt;
-  modal("Fortune Wheel \u{1F3A1}", "Spin for coins, energy or a booster.", [
-    { label: free ? "Free spin" : (adLeft > 0 ? "Spin \u2014 watch a short ad" : "Ad spins used up today"), primary: free || adLeft > 0,
-      onClick: async () => {
-        if (free) m.consumeFreeSpin();
-        else if (adLeft > 0) { const ok = await Platform.showRewarded(); if (!ok) { closeModal(); return; } m.rewardedUse("wheel"); }
-        else return;
-        const r = m.spinWheel(); toast("Wheel: " + r.segment.label); blip(700, 0.16, "triangle", 0.06); closeModal(); refresh();
-      } },
-    { label: `Spin for ${alt} \u{1F4B0}`, onClick: () => { if (m.coins < alt) { toast("Not enough coins"); return; } m.coins -= alt; const r = m.spinWheel(); toast("Wheel: " + r.segment.label); closeModal(); refresh(); } },
-    { label: "Close", onClick: closeModal },
-  ]);
+  const mk = (label, primary, fn, disabled) => {
+    const b = document.createElement("button");
+    b.className = "btn " + (primary ? "primary" : ""); b.textContent = label; b.disabled = !!disabled;
+    b.addEventListener("click", fn); host.appendChild(b);
+  };
+  if (free) mk("Free spin", true, () => doSpin("free"));
+  else mk("Free spin in " + fmtTime(m.wheelFreeIn()), false, () => {}, true);
+  if (adLeft > 0) mk("Watch ad for a spin (" + adLeft + " left)", true, () => doSpin("ad"));
+  else mk("Ad spins used up today", false, () => {}, true);
+  mk("Spin for " + alt + " \u{1F4B0}", false, () => doSpin("coins"));
+  mk("Close", false, closeModal);
+  const st = $("wheelStatus");
+  if (st) st.textContent = "Free spin every 5 min \u00B7 " + C.WHEEL.length + " prizes";
+}
+async function doSpin(kind) {
+  if (wheelState.spinning) return;
+  const m = app.model;
+  if (kind === "free" && !m.wheelFreeAvailable()) return;
+  if (kind === "ad" && m.rewardedLeft("wheel") <= 0) return;
+  if (kind === "coins" && m.coins < C.REWARDED.wheel.coinsAlt) { toast("Not enough coins"); return; }
+  if (kind === "ad") { const ok = await Platform.showRewarded(); if (!ok) return; m.rewardedUse("wheel"); }
+  if (kind === "coins") m.coins -= C.REWARDED.wheel.coinsAlt;
+  if (kind === "free") m.consumeFreeSpin();
+  spinAnim();
+}
+function spinAnim() {
+  const m = app.model;
+  wheelState.spinning = true;
+  const pick = m.pickWheel();                 // decide the prize FIRST, then animate to it
+  const n = C.WHEEL.length, seg = Math.PI * 2 / n;
+  const start = wheelState.angle;
+  let end = -Math.PI / 2 - (pick.index * seg + seg / 2);
+  while (end < start + Math.PI * 2 * 5) end += Math.PI * 2;
+  const dur = 4200, t0 = Date.now();
+  let lastTick = -1;
+  const frame = () => {
+    const t = Math.min(1, (Date.now() - t0) / dur);
+    const e = 1 - Math.pow(1 - t, 3);
+    wheelState.angle = start + (end - start) * e;
+    drawWheel();
+    const segNow = Math.floor((wheelState.angle + Math.PI / 2) / seg);
+    if (segNow !== lastTick) { lastTick = segNow; blip(900, 0.03, "square", 0.02); }
+    if (t < 1) requestAnimationFrame(frame); else finishSpin(pick);
+  };
+  requestAnimationFrame(frame);
+}
+function finishSpin(pick) {
+  wheelState.spinning = false;
+  app.model.applyWheel(pick.segment);
+  blip(760, 0.18, "triangle", 0.07);
+  toast("You won " + pick.segment.glyph + " " + pick.segment.label + "  \u00B7 " + (pick.segment.rarity || "common"));
+  renderWheelButtons();
+  refresh();
 }
 function offerDouble(amount) {
   modal("Nice order! \u{1F389}", `Double your reward \u2014 ${amount} more coins.`, [
