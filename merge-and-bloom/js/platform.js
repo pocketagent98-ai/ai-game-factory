@@ -27,7 +27,7 @@ export const Platform = {
     if (b) {
       try {
         await Promise.race([
-          b.initialize(),
+          window.bridge.initialize(),
           new Promise((_, rej) => setTimeout(() => rej(new Error("bridge init timeout")), 1500)),
         ]);
         this.bridge = b;
@@ -73,7 +73,7 @@ export const Platform = {
         if (data && data[0]) env = JSON.parse(data[0]);
       } catch (e) {}
     }
-    if (!env) {
+    if (!env && !this.bridge) {
       try { env = JSON.parse(localStorage.getItem("mb_save") || "null"); } catch (e) {}
     }
     this._cache = env;
@@ -82,7 +82,9 @@ export const Platform = {
   setSave(env) {
     this._cache = env;
     const s = JSON.stringify(env);
-    if (this.bridge) { try { this.bridge.storage.set(["mb_save"], [s]); } catch (e) {} }
+    // Playgama requires progress to be saved through Bridge Storage — never localStorage
+    // when the platform storage is available. localStorage is a standalone/offline fallback only.
+    if (this.bridge) { try { this.bridge.storage.set(["mb_save"], [s]); } catch (e) {} return; }
     try { localStorage.setItem("mb_save", s); } catch (e) {}
   },
 
@@ -115,5 +117,13 @@ export const Platform = {
     if (this.bridge) { try { return this.bridge.platform.language; } catch (e) {} }
     return (typeof navigator !== "undefined" && navigator.language || "en").slice(0, 2);
   },
-  isAudioEnabled() { return true; },
+  isAudioEnabled() {
+    if (this.bridge) {
+      try {
+        const v = this.bridge.platform.isAudioEnabled;
+        return typeof v === "function" ? !!v() : v !== false;
+      } catch (e) {}
+    }
+    return true;
+  },
 };

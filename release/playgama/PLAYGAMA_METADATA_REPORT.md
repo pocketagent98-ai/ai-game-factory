@@ -84,9 +84,9 @@ and rasterised with CairoSVG — **no generative model was used** (none was avai
 
 | File | Dimensions | SHA-256 |
 |---|---|---|
-| `assets/merge-bloom-square-800x800.png` | 800 × 800 | `75342086bd07b7737b6fd5993937ec85b781154381c51622c595c81ad9e28a7b` |
-| `assets/merge-bloom-portrait-1080x1920.png` | 1080 × 1920 | `9452db740504a019d0e349be3739924b5a2da13696c92b82f507a1a33b6999e0` |
-| `assets/merge-bloom-landscape-1920x1080.png` | 1920 × 1080 | `69bfa4612ffb89c361bfb96b511735fd4eb7c6651571352cae4f0ee2612c8132` |
+| `assets/merge-bloom-square-800x800.png` | 800 × 800 | `c64bb4369a430196b12d4a4cde27089a4c9fbbb99754503c2804f8a63fa3cc65` |
+| `assets/merge-bloom-portrait-1080x1920.png` | 1080 × 1920 | `3a334c0527b68126b4e65dd8473314c73daac6871cc203436e11efc6ae61ee30` |
+| `assets/merge-bloom-landscape-1920x1080.png` | 1920 × 1080 | `8ae4662a9c17d11eb67bf41296d9f03cba652edbf314d3f877236fca16595861` |
 | `assets/_reference-board.png` (reference only) | 1280 × 860 | — |
 
 **Reference note (Phase 6):** no browser is available in this environment, so the covers were built

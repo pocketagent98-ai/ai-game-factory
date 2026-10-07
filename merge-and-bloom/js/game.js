@@ -37,9 +37,10 @@ function blip(freq, dur = 0.09, type = "sine", gain = 0.05) {
 // ---------------------------------------------------------------- bootstrap
 async function init() {
   Platform.onPause = (paused) => { if (paused) Platform.setSave(app.model.serialize()); };
-  Platform.onAudio = () => {};
+  Platform.onAudio = (enabled) => { soundOn = enabled; };
   // never let a missing/hanging platform SDK block the game from booting
   try { await Promise.race([Platform.init(), new Promise((r) => setTimeout(r, 1500))]); } catch (e) {}
+  soundOn = Platform.isAudioEnabled();   // Playgama: mute the game if the platform says so
   let env = null;
   try { env = Platform.getSave(); } catch (e) {}
   if (env) app.model = GameModel.deserialize(env);
