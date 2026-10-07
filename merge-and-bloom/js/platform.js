@@ -20,7 +20,10 @@ export const Platform = {
     // The game must ALWAYS boot, even if a portal SDK is missing or hangs.
     // Ads are OFF by default for local playtesting; a portal (or a script tag)
     // can inject window.bridge and it will be used automatically.
-    const b = (typeof window !== "undefined") && window.bridge;
+    let b = (typeof window !== "undefined") && window.bridge;
+    // If the Bridge SDK is loaded via a <script id="pg-bridge"> tag (ads ON), give it a
+    // moment to arrive — but never block the boot for more than ~1.8 s.
+    if (!b) b = await this._waitForBridge(1200);
     if (b) {
       try {
         await Promise.race([
@@ -42,6 +45,23 @@ export const Platform = {
         new Promise((r) => setTimeout(r, 600)),
       ]);
     } catch (e) {}
+  },
+
+  // Wait for the async Bridge SDK script (id="pg-bridge") to finish loading, so ads
+  // work on a portal but the game still boots instantly offline / on file://.
+  _waitForBridge(ms) {
+    return new Promise((resolve) => {
+      if (typeof window !== "undefined" && window.bridge) return resolve(window.bridge);
+      // offline (or a browser with no network): don't stall the boot, go straight to standalone
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return resolve(null);
+      if (typeof document === "undefined" || !document.getElementById) return resolve(null);
+      const el = document.getElementById("pg-bridge");
+      if (!el) return resolve(null);
+      let done = false;
+      const finish = () => { if (!done) { done = true; resolve((typeof window !== "undefined" && window.bridge) || null); } };
+      try { el.addEventListener("load", finish); el.addEventListener("error", finish); } catch (e) {}
+      setTimeout(finish, ms);
+    });
   },
 
   // ---- saves ------------------------------------------------------------

@@ -45,6 +45,7 @@ export class GameModel {
     this.themes = { owned: ["meadow"], selected: "meadow" };
     this.streak = { day: 0, lastClaimDay: -1 };
     this.wheel = { spins: 0, nextFreeAt: 0, lastFreeDay: -1 };
+    this.box = { lastFreeDay: -1 };
     this.rushUntil = 0;
     this.rushNextAt = Date.now() + C.RUSH_EVERY_MS;
 
@@ -341,6 +342,19 @@ export class GameModel {
   spinWheel() { const p = this.pickWheel(); this.applyWheel(p.segment); return { ok: true, segment: p.segment, index: p.index }; }
   consumeFreeSpin(now = Date.now()) { this.wheel.nextFreeAt = now + C.WHEEL_FREE_COOLDOWN_MS; }
 
+  // ---- mystery box ------------------------------------------------------
+  boxFreeAvailable(now = Date.now()) { return this.box.lastFreeDay !== this._dayKey(now); }
+  consumeBoxFree(now = Date.now()) { this.box.lastFreeDay = this._dayKey(now); }
+  openBox() {
+    const total = C.BOX_PRIZES.reduce((a, p) => a + p.weight, 0);
+    let r = this._roll() * total, pick = C.BOX_PRIZES[0];
+    for (const p of C.BOX_PRIZES) { if ((r -= p.weight) <= 0) { pick = p; break; } }
+    if (pick.coins) this.coins += pick.coins;
+    if (pick.energy) this.energy = Math.min(this.energyCap, this.energy + pick.energy);
+    if (pick.booster) { const keys = Object.keys(this.boosters); const k = keys[Math.floor(this._roll() * keys.length)]; this.boosters[k] = (this.boosters[k] || 0) + 1; }
+    return { ok: true, prize: pick };
+  }
+
   // ---- achievements -----------------------------------------------------
   checkAchievements() {
     const unlocked = [];
@@ -423,7 +437,7 @@ export class GameModel {
       daily: this.daily, missions: this.missions, boosters: this.boosters, bestCombo: this.bestCombo,
       nextChestAt: this.nextChestAt, totalMerges: this.totalMerges, totalOrders: this.totalOrders, maxTier: this.maxTier,
       achievements: this.achievements, campaign: this.campaign,
-      themes: this.themes, streak: this.streak, wheel: this.wheel, rushNextAt: this.rushNextAt,
+      themes: this.themes, streak: this.streak, wheel: this.wheel, box: this.box, rushNextAt: this.rushNextAt,
     } };
   }
 
@@ -441,7 +455,7 @@ export class GameModel {
       boosters: s.boosters || m.boosters, bestCombo: s.bestCombo || 0, nextChestAt: s.nextChestAt || (Date.now() + C.CHEST_FIRST_MS),
       totalMerges: s.totalMerges || 0, totalOrders: s.totalOrders || 0, maxTier: s.maxTier || 1,
       achievements: s.achievements || {}, campaign: s.campaign || m.campaign, themes: s.themes || m.themes,
-      streak: s.streak || m.streak, wheel: s.wheel || m.wheel, rushNextAt: s.rushNextAt || (Date.now() + C.RUSH_EVERY_MS),
+      streak: s.streak || m.streak, wheel: s.wheel || m.wheel, box: s.box || m.box, rushNextAt: s.rushNextAt || (Date.now() + C.RUSH_EVERY_MS),
     });
     m.lastTick = Date.now();
     if (m.daily.missionDay !== m._dayKey()) m._rollMissions();

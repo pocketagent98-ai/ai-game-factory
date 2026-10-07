@@ -2,8 +2,10 @@
 import fs from "node:fs";
 const html = fs.readFileSync(new URL("./index.html", import.meta.url), "utf8");
 const script = html.match(/<script>([\s\S]*)<\/script>/)[1];
-// regression guard: the build must have exactly one inline script and NO external scripts
-if (/<script[^>]*\ssrc=/i.test(html)) { console.log("FAIL: external <script src> present (breaks offline/file://)"); process.exit(1); }
+// regression guard: exactly one inline script; the ONLY external script allowed is the
+// Playgama Bridge ad SDK (ads ON). Any other external script would break offline/file://.
+const ext = html.match(/<script[^>]*\ssrc=[^>]*>/gi) || [];
+if (ext.length > 1 || (ext.length === 1 && !/id="pg-bridge"/.test(ext[0]))) { console.log("FAIL: unexpected external <script src> present"); process.exit(1); }
 if ((html.match(/<script>/g) || []).length !== 1) { console.log("FAIL: expected exactly one inline <script>"); process.exit(1); }
 if (!/function init/.test(script)) { console.log("FAIL: game code missing from the inline script (premature </script>?)"); process.exit(1); }
 
@@ -29,12 +31,12 @@ class El {
   getContext() { return ctx; }
 }
 const store = {};
-const doc = { getElementById(id) { return store[id] || (store[id] = new El(id)); }, createElement() { return new El(); }, addEventListener() {}, visibilityState: "visible", documentElement: { style: { setProperty() {} } } };
+const doc = { getElementById(id) { if (id === "pg-bridge") return null; return store[id] || (store[id] = new El(id)); }, createElement() { return new El(); }, addEventListener() {}, visibilityState: "visible", documentElement: { style: { setProperty() {} } } };
 doc.getElementById("board").parentElement = new El();
 
 const winL = {};
 global.window = { addEventListener(t, f) { (winL[t] = winL[t] || []).push(f); }, devicePixelRatio: 1, innerWidth: 400, innerHeight: 800 };
-global.document = doc; global.navigator = { language: "en" };
+global.document = doc; global.navigator = { language: "en", onLine: true };
 global.localStorage = { _d: {}, getItem(k) { return this._d[k] ?? null; }, setItem(k, v) { this._d[k] = v; }, removeItem(k) { delete this._d[k]; } };
 let fr = 0; global.requestAnimationFrame = (cb) => { if (fr++ < 2) queueMicrotask(() => cb(0)); return fr; };
 global.cancelAnimationFrame = () => {}; global.setInterval = () => 0; global.confirm = () => false;
@@ -52,6 +54,20 @@ doc.getElementById("wheelBtn").click();
 const wheelFills = CALLS.fill - fillsBefore;
 const wheelBtns = n("wheelBtns");
 console.log(`wheel draw calls=${wheelFills} wheel buttons=${wheelBtns}`);
+// complete a full spin + claim on a fast-forward clock (the spin uses Date.now() + rAF)
+const realNow = Date.now; let clock = realNow(); let fr2 = 0;
+Date.now = () => (clock += 1500);
+global.requestAnimationFrame = (cb) => { if (fr2++ < 300) queueMicrotask(() => cb(0)); return fr2; };
+doc.getElementById("wheelBtns").children[0].click();          // tap "Free spin"
+for (let i = 0; i < 60; i++) await new Promise((r) => setTimeout(r, 0));
+const labels = doc.getElementById("wheelBtns").children.map((c) => c.textContent).join(" | ");
+if (!/Claim/.test(labels)) { console.log("FAIL: no Claim button after spin -> " + labels); process.exit(1); }
+const coinsBefore = Number(doc.getElementById("coins").textContent) || 0;
+doc.getElementById("wheelBtns").children[0].click();          // tap "Claim"
+Date.now = realNow;
+const afterClaim = doc.getElementById("wheelBtns").children.map((c) => c.textContent).join(" | ");
+if (/Claim/.test(afterClaim)) { console.log("FAIL: claim did not clear -> " + afterClaim); process.exit(1); }
+console.log(`wheel claim flow OK (prize granted, coins ${coinsBefore} -> ${doc.getElementById("coins").textContent})`);
 const orders = n("orders"), plots = n("gardenGrid"), ups = n("upgradesList"), missions = n("missionsList"), boosters = n("boosters");
 console.log(`orders=${orders} plots=${plots} upgrades=${ups} missions=${missions} boosters=${boosters}`);
 console.log("draw calls:", JSON.stringify(CALLS));

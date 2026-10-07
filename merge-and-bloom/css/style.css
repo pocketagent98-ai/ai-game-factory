@@ -35,8 +35,8 @@ body{
 .board-wrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
 canvas{display:block;touch-action:none;border-radius:16px;background:rgba(0,0,0,.18)}
 
-.orders{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
-.order{flex:0 0 auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:7px 9px;display:flex;flex-direction:column;gap:5px;min-width:128px}
+.orders{display:flex;gap:8px;flex-wrap:wrap;padding-bottom:2px}
+.order{flex:1 1 130px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:7px 9px;display:flex;flex-direction:column;gap:5px}
 .order.ready{border-color:var(--accent);box-shadow:0 0 0 2px rgba(126,240,176,.25)}
 .order-items{display:flex;gap:7px;font-size:15px;align-items:center}
 .chip{display:inline-flex;gap:2px;align-items:center;font-size:13px;color:var(--dim)}
@@ -109,3 +109,14 @@ canvas{display:block;touch-action:none;border-radius:16px;background:rgba(0,0,0,
 #wheelCanvas{border-radius:50%;background:#0b2a21;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .wheel-status{font-size:12px;color:var(--dim);margin-bottom:8px}
 .upg.ach.done{opacity:.65}
+
+/* wheel claim card */
+.wheel-result{min-height:0}
+.wr-card{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px;border-radius:14px;background:var(--panel);border:2px solid var(--line);animation:pop .3s ease}
+.wr-glyph{font-size:34px;line-height:1}
+.wr-label{font-weight:800;font-size:17px}
+.wr-rarity{font-size:10px;font-weight:800;letter-spacing:1px;color:var(--dim)}
+.wr-card.rarity-rare{border-color:#4aa3ff;box-shadow:0 0 14px rgba(74,163,255,.45)}
+.wr-card.rarity-epic{border-color:#b06cff;box-shadow:0 0 16px rgba(176,108,255,.5)}
+.wr-card.rarity-jackpot{border-color:#ffd54f;box-shadow:0 0 20px rgba(255,213,79,.7);animation:pop .3s ease,pulse .6s infinite alternate}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}

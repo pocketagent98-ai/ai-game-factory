@@ -5,10 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0f3d2e">
 <title>Merge &amp; Bloom</title>
-<!-- ADS ARE OFF for local playtesting so the game always boots instantly and works offline.
-     When you are ready to publish and earn, add the Playgama Bridge SDK here (or use the
-     portal's native SDK). The game auto-detects window.bridge and uses it; without it,
-     ads are simulated and saves use localStorage.  See PUBLISHING.md for the exact tag. -->
+<!-- ADS ON: Playgama Bridge — ONE integration that routes to Poki, CrazyGames, GameDistribution,
+     Yandex, Playgama and 25+ portals. Loaded async so it never blocks the boot; the game waits
+     for it briefly and falls back to a simulated standalone mode if it is unavailable (offline,
+     file://, or a portal without a Bridge adapter). To turn ads OFF for a local playtest, just
+     delete this one line. All ads are served by the platform — never a self-hosted network. -->
+<script id="pg-bridge" async src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>
 <style>
 :root{
   --bg1:#0f3d2e; --bg2:#124b39; --panel:#173e33; --line:rgba(255,255,255,.14);
@@ -47,8 +49,8 @@ body{
 .board-wrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
 canvas{display:block;touch-action:none;border-radius:16px;background:rgba(0,0,0,.18)}
 
-.orders{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
-.order{flex:0 0 auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:7px 9px;display:flex;flex-direction:column;gap:5px;min-width:128px}
+.orders{display:flex;gap:8px;flex-wrap:wrap;padding-bottom:2px}
+.order{flex:1 1 130px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:7px 9px;display:flex;flex-direction:column;gap:5px}
 .order.ready{border-color:var(--accent);box-shadow:0 0 0 2px rgba(126,240,176,.25)}
 .order-items{display:flex;gap:7px;font-size:15px;align-items:center}
 .chip{display:inline-flex;gap:2px;align-items:center;font-size:13px;color:var(--dim)}
@@ -122,6 +124,17 @@ canvas{display:block;touch-action:none;border-radius:16px;background:rgba(0,0,0,
 .wheel-status{font-size:12px;color:var(--dim);margin-bottom:8px}
 .upg.ach.done{opacity:.65}
 
+/* wheel claim card */
+.wheel-result{min-height:0}
+.wr-card{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px;border-radius:14px;background:var(--panel);border:2px solid var(--line);animation:pop .3s ease}
+.wr-glyph{font-size:34px;line-height:1}
+.wr-label{font-weight:800;font-size:17px}
+.wr-rarity{font-size:10px;font-weight:800;letter-spacing:1px;color:var(--dim)}
+.wr-card.rarity-rare{border-color:#4aa3ff;box-shadow:0 0 14px rgba(74,163,255,.45)}
+.wr-card.rarity-epic{border-color:#b06cff;box-shadow:0 0 16px rgba(176,108,255,.5)}
+.wr-card.rarity-jackpot{border-color:#ffd54f;box-shadow:0 0 20px rgba(255,213,79,.7);animation:pop .3s ease,pulse .6s infinite alternate}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+
 </style>
 </head>
 <body>
@@ -165,6 +178,7 @@ canvas{display:block;touch-action:none;border-radius:16px;background:rgba(0,0,0,
         <button id="chestBtn" class="rbtn" aria-label="Reward chest"><span class="ri">🎁</span><span class="rl">Chest</span></button>
         <button id="giftBtn" class="rbtn" aria-label="Daily gift"><span class="ri">✨</span><span class="rl">Gift</span></button>
         <button id="wheelBtn" class="rbtn" aria-label="Fortune wheel"><span class="ri">🎡</span><span class="rl">Wheel</span></button>
+        <button id="boxBtn" class="rbtn" aria-label="Mystery box"><span class="ri">📦</span><span class="rl">Box</span></button>
       </div>
       <div class="actionbar">
         <div id="boosters" class="boosters"></div>
@@ -294,6 +308,7 @@ const REWARDED = {
   refreshOrders: { cap: 2, coinsAlt: 40 },
   chest:         { cap: 6, coinsAlt: 250 },
   doubleHarvest: { cap: 1, coinsAlt: 0 },
+  box:           { cap: 3, coinsAlt: 80 },   // mystery-box extra opens
 };
 
 // ================= v3: campaign (levels + bosses), themes, leaderboard, =====
@@ -338,6 +353,16 @@ const WHEEL_COLORS = ["#2ea36b", "#3a5c8a", "#b8860b", "#7a4b8a", "#2e8ba3", "#a
 const WHEEL_FREE_PER_DAY = 1;
 const WHEEL_AD_SPINS = 3;
 const WHEEL_FREE_COOLDOWN_MS = 5 * 60 * 1000;   // after the free spin, a new free one every 5 min
+
+// --- Mystery Box (a surprise prize; free once a day, more via ad/coins) ---
+const MYSTERY_BOX = { coinsAlt: 80 };
+const BOX_PRIZES = [
+  { id: "coins",   label: "Coins",      glyph: "\u{1F4B0}", coins: 250,  weight: 34 },
+  { id: "energy",  label: "Energy",     glyph: "\u26A1",     energy: 30,  weight: 24 },
+  { id: "booster", label: "Booster",    glyph: "\u{1F381}", booster: "random", weight: 20 },
+  { id: "big",     label: "Big coins",  glyph: "\u{1F48E}", coins: 800,  weight: 14 },
+  { id: "mega",    label: "MEGA prize", glyph: "\u{1F3C6}", coins: 2000, energy: 50, weight: 8 },
+];
 
 // --- Achievements (unlock + reward) ---
 const ACHIEVEMENTS = [
@@ -402,6 +427,7 @@ class GameModel {
     this.themes = { owned: ["meadow"], selected: "meadow" };
     this.streak = { day: 0, lastClaimDay: -1 };
     this.wheel = { spins: 0, nextFreeAt: 0, lastFreeDay: -1 };
+    this.box = { lastFreeDay: -1 };
     this.rushUntil = 0;
     this.rushNextAt = Date.now() + RUSH_EVERY_MS;
 
@@ -698,6 +724,19 @@ class GameModel {
   spinWheel() { const p = this.pickWheel(); this.applyWheel(p.segment); return { ok: true, segment: p.segment, index: p.index }; }
   consumeFreeSpin(now = Date.now()) { this.wheel.nextFreeAt = now + WHEEL_FREE_COOLDOWN_MS; }
 
+  // ---- mystery box ------------------------------------------------------
+  boxFreeAvailable(now = Date.now()) { return this.box.lastFreeDay !== this._dayKey(now); }
+  consumeBoxFree(now = Date.now()) { this.box.lastFreeDay = this._dayKey(now); }
+  openBox() {
+    const total = BOX_PRIZES.reduce((a, p) => a + p.weight, 0);
+    let r = this._roll() * total, pick = BOX_PRIZES[0];
+    for (const p of BOX_PRIZES) { if ((r -= p.weight) <= 0) { pick = p; break; } }
+    if (pick.coins) this.coins += pick.coins;
+    if (pick.energy) this.energy = Math.min(this.energyCap, this.energy + pick.energy);
+    if (pick.booster) { const keys = Object.keys(this.boosters); const k = keys[Math.floor(this._roll() * keys.length)]; this.boosters[k] = (this.boosters[k] || 0) + 1; }
+    return { ok: true, prize: pick };
+  }
+
   // ---- achievements -----------------------------------------------------
   checkAchievements() {
     const unlocked = [];
@@ -780,7 +819,7 @@ class GameModel {
       daily: this.daily, missions: this.missions, boosters: this.boosters, bestCombo: this.bestCombo,
       nextChestAt: this.nextChestAt, totalMerges: this.totalMerges, totalOrders: this.totalOrders, maxTier: this.maxTier,
       achievements: this.achievements, campaign: this.campaign,
-      themes: this.themes, streak: this.streak, wheel: this.wheel, rushNextAt: this.rushNextAt,
+      themes: this.themes, streak: this.streak, wheel: this.wheel, box: this.box, rushNextAt: this.rushNextAt,
     } };
   }
 
@@ -798,7 +837,7 @@ class GameModel {
       boosters: s.boosters || m.boosters, bestCombo: s.bestCombo || 0, nextChestAt: s.nextChestAt || (Date.now() + CHEST_FIRST_MS),
       totalMerges: s.totalMerges || 0, totalOrders: s.totalOrders || 0, maxTier: s.maxTier || 1,
       achievements: s.achievements || {}, campaign: s.campaign || m.campaign, themes: s.themes || m.themes,
-      streak: s.streak || m.streak, wheel: s.wheel || m.wheel, rushNextAt: s.rushNextAt || (Date.now() + RUSH_EVERY_MS),
+      streak: s.streak || m.streak, wheel: s.wheel || m.wheel, box: s.box || m.box, rushNextAt: s.rushNextAt || (Date.now() + RUSH_EVERY_MS),
     });
     m.lastTick = Date.now();
     if (m.daily.missionDay !== m._dayKey()) m._rollMissions();
@@ -828,7 +867,10 @@ const Platform = {
     // The game must ALWAYS boot, even if a portal SDK is missing or hangs.
     // Ads are OFF by default for local playtesting; a portal (or a script tag)
     // can inject window.bridge and it will be used automatically.
-    const b = (typeof window !== "undefined") && window.bridge;
+    let b = (typeof window !== "undefined") && window.bridge;
+    // If the Bridge SDK is loaded via a <script id="pg-bridge"> tag (ads ON), give it a
+    // moment to arrive — but never block the boot for more than ~1.8 s.
+    if (!b) b = await this._waitForBridge(1200);
     if (b) {
       try {
         await Promise.race([
@@ -850,6 +892,23 @@ const Platform = {
         new Promise((r) => setTimeout(r, 600)),
       ]);
     } catch (e) {}
+  },
+
+  // Wait for the async Bridge SDK script (id="pg-bridge") to finish loading, so ads
+  // work on a portal but the game still boots instantly offline / on file://.
+  _waitForBridge(ms) {
+    return new Promise((resolve) => {
+      if (typeof window !== "undefined" && window.bridge) return resolve(window.bridge);
+      // offline (or a browser with no network): don't stall the boot, go straight to standalone
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return resolve(null);
+      if (typeof document === "undefined" || !document.getElementById) return resolve(null);
+      const el = document.getElementById("pg-bridge");
+      if (!el) return resolve(null);
+      let done = false;
+      const finish = () => { if (!done) { done = true; resolve((typeof window !== "undefined" && window.bridge) || null); } };
+      try { el.addEventListener("load", finish); el.addEventListener("error", finish); } catch (e) {}
+      setTimeout(finish, ms);
+    });
   },
 
   // ---- saves ------------------------------------------------------------
@@ -923,7 +982,9 @@ const fmtTime = (s) => { const m = Math.floor(s / 60), ss = s % 60; return m > 0
 
 // ---------------------------------------------------------------- audio
 let actx = null;
+let soundOn = true;
 function blip(freq, dur = 0.09, type = "sine", gain = 0.05) {
+  if (!soundOn) return;
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
@@ -969,6 +1030,7 @@ async function init() {
   $("chestBtn").addEventListener("click", onChest);
   $("giftBtn").addEventListener("click", onGift);
   $("wheelBtn").addEventListener("click", onWheel);
+  $("boxBtn").addEventListener("click", onBox);
 
   const pending = app.model.pendingOffline();
   if (pending > 0) showWelcomeBack(pending);
@@ -1421,9 +1483,11 @@ function onWheel() {
      <h3>Fortune Wheel \u{1F3A1}</h3>
      <div class="wheel-stage"><canvas id="wheelCanvas"></canvas></div>
      <div class="wheel-status" id="wheelStatus"></div>
+     <div class="wheel-result" id="wheelResult"></div>
      <div class="modal-btns" id="wheelBtns"></div>
    </div>`;
   root.appendChild(back);
+  wheelState.pending = null; wheelState.highlight = null;
   wheelState.canvas = document.getElementById("wheelCanvas");
   const s = wheelState.size;
   wheelState.canvas.width = s; wheelState.canvas.height = s;
@@ -1440,10 +1504,11 @@ function drawWheel() {
   for (let i = 0; i < n; i++) {
     const a0 = wheelState.angle + i * seg, a1 = a0 + seg;
     ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, a0, a1); ctx.closePath();
-    ctx.fillStyle = WHEEL_COLORS[i % WHEEL_COLORS.length]; ctx.fill();
-    ctx.lineWidth = 2; ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.stroke();
+    const win = wheelState.highlight === i;
+    ctx.fillStyle = win ? "#ffd54f" : WHEEL_COLORS[i % WHEEL_COLORS.length]; ctx.fill();
+    ctx.lineWidth = win ? 4 : 2; ctx.strokeStyle = win ? "#fff" : "rgba(255,255,255,0.35)"; ctx.stroke();
     ctx.save(); ctx.translate(cx, cy); ctx.rotate(a0 + seg / 2);
-    ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.fillStyle = "#fff";
+    ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.fillStyle = win ? "#3a1c00" : "#fff";
     ctx.font = "700 13px system-ui,sans-serif";
     ctx.fillText(WHEEL[i].glyph + " " + WHEEL[i].label, R - 10, 0);
     ctx.restore();
@@ -1456,25 +1521,31 @@ function drawWheel() {
 function renderWheelButtons() {
   const m = app.model, host = $("wheelBtns"); if (!host) return;
   host.innerHTML = "";
-  const free = m.wheelFreeAvailable();
-  const adLeft = m.rewardedLeft("wheel");
-  const alt = REWARDED.wheel.coinsAlt;
   const mk = (label, primary, fn, disabled) => {
     const b = document.createElement("button");
     b.className = "btn " + (primary ? "primary" : ""); b.textContent = label; b.disabled = !!disabled;
     b.addEventListener("click", fn); host.appendChild(b);
   };
+  const st = $("wheelStatus");
+  if (wheelState.pending) {
+    mk("Claim " + wheelState.pending.segment.glyph + " " + wheelState.pending.segment.label, true, claimWheel);
+    if (st) st.textContent = "Tap Claim to collect your prize!";
+    return;
+  }
+  if (wheelState.spinning) { if (st) st.textContent = "Spinning\u2026"; return; }
+  const free = m.wheelFreeAvailable();
+  const adLeft = m.rewardedLeft("wheel");
+  const alt = REWARDED.wheel.coinsAlt;
   if (free) mk("Free spin", true, () => doSpin("free"));
   else mk("Free spin in " + fmtTime(m.wheelFreeIn()), false, () => {}, true);
   if (adLeft > 0) mk("Watch ad for a spin (" + adLeft + " left)", true, () => doSpin("ad"));
   else mk("Ad spins used up today", false, () => {}, true);
   mk("Spin for " + alt + " \u{1F4B0}", false, () => doSpin("coins"));
   mk("Close", false, closeModal);
-  const st = $("wheelStatus");
   if (st) st.textContent = "Free spin every 5 min \u00B7 " + WHEEL.length + " prizes";
 }
 async function doSpin(kind) {
-  if (wheelState.spinning) return;
+  if (wheelState.spinning || wheelState.pending) return;
   const m = app.model;
   if (kind === "free" && !m.wheelFreeAvailable()) return;
   if (kind === "ad" && m.rewardedLeft("wheel") <= 0) return;
@@ -1487,6 +1558,8 @@ async function doSpin(kind) {
 function spinAnim() {
   const m = app.model;
   wheelState.spinning = true;
+  wheelState.highlight = null;
+  renderWheelResult();
   const pick = m.pickWheel();                 // decide the prize FIRST, then animate to it
   const n = WHEEL.length, seg = Math.PI * 2 / n;
   const start = wheelState.angle;
@@ -1507,9 +1580,32 @@ function spinAnim() {
 }
 function finishSpin(pick) {
   wheelState.spinning = false;
-  app.model.applyWheel(pick.segment);
+  wheelState.pending = pick;               // hold the prize until the player taps Claim
+  wheelState.highlight = pick.index;
+  drawWheel();
   blip(760, 0.18, "triangle", 0.07);
-  toast("You won " + pick.segment.glyph + " " + pick.segment.label + "  \u00B7 " + (pick.segment.rarity || "common"));
+  renderWheelResult();
+  renderWheelButtons();
+}
+function renderWheelResult() {
+  const el = $("wheelResult"); if (!el) return;
+  const p = wheelState.pending;
+  if (!p) { el.innerHTML = ""; return; }
+  const s = p.segment;
+  el.innerHTML = `<div class="wr-card rarity-${s.rarity || "common"}">
+     <div class="wr-glyph">${s.glyph}</div>
+     <div class="wr-label">${s.label}</div>
+     <div class="wr-rarity">${(s.rarity || "common").toUpperCase()}</div>
+   </div>`;
+}
+function claimWheel() {
+  const p = wheelState.pending; if (!p) return;
+  app.model.applyWheel(p.segment);
+  blip(680, 0.16, "triangle", 0.07);
+  toast("Claimed " + p.segment.glyph + " " + p.segment.label);
+  wheelState.pending = null; wheelState.highlight = null;
+  drawWheel();
+  renderWheelResult();
   renderWheelButtons();
   refresh();
 }
@@ -1574,10 +1670,36 @@ function toast(msg) {
   const t = $("toast"); t.textContent = msg; t.classList.add("show");
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 1600);
 }
+function onBox() {
+  const m = app.model;
+  const free = m.boxFreeAvailable();
+  const left = m.rewardedLeft("box");
+  const alt = MYSTERY_BOX.coinsAlt;
+  modal("Mystery Box \u{1F381}", "Open it for a surprise prize \u2014 coins, energy or a booster!", [
+    { label: free ? "Open free box" : (left > 0 ? "Open \u2014 watch a short ad" : "Ad limit reached today"), primary: free || left > 0,
+      onClick: async () => {
+        if (free) m.consumeBoxFree();
+        else if (left > 0) { const ok = await Platform.showRewarded(); if (!ok) { closeModal(); return; } m.rewardedUse("box"); }
+        else return;
+        const r = m.openBox(); boxToast(r.prize); blip(720, 0.16, "triangle", 0.06); closeModal(); refresh();
+      } },
+    { label: `Open with ${alt} \u{1F4B0}`, onClick: () => { if (m.coins < alt) { toast("Not enough coins"); return; } m.coins -= alt; const r = m.openBox(); boxToast(r.prize); closeModal(); refresh(); } },
+    { label: "Later", onClick: closeModal },
+  ]);
+}
+function boxToast(p) { toast(p.glyph + " " + p.label + "!"); }
 function showSettings() {
-  modal("Settings", "Merge & Bloom v2 \u2014 best combo \u00D7" + (app.model.bestCombo || 0), [
-    { label: "Reset progress", onClick: () => { if (confirm("Erase all progress?")) { localStorage.removeItem("mb_save"); location.reload(); } } },
+  const m = app.model;
+  modal("Settings \u2699\uFE0F", "Merge & Bloom v5 \u00B7 best combo \u00D7" + (m.bestCombo || 0) + " \u00B7 " + m.totalMerges + " merges", [
+    { label: "Sound: " + (soundOn ? "ON \u{1F50A}" : "OFF \u{1F507}"), onClick: () => { soundOn = !soundOn; if (soundOn) blip(660, 0.1); showSettings(); } },
+    { label: "How to play", onClick: showHowTo },
+    { label: "Reset progress", onClick: () => { if (confirm("Erase all progress?")) { try { localStorage.removeItem("mb_save"); } catch (e) {} location.reload(); } } },
     { label: "Close", primary: true, onClick: closeModal },
+  ]);
+}
+function showHowTo() {
+  modal("How to play \u{1F331}", "Tap the Seed Pod to drop plants. Drag one plant onto an identical plant to merge them into a higher tier. Fulfil visitor orders, grow your Garden, and spin the Fortune Wheel for prizes.", [
+    { label: "Got it", primary: true, onClick: closeModal },
   ]);
 }
 

@@ -18,7 +18,9 @@ const fmtTime = (s) => { const m = Math.floor(s / 60), ss = s % 60; return m > 0
 
 // ---------------------------------------------------------------- audio
 let actx = null;
+let soundOn = true;
 function blip(freq, dur = 0.09, type = "sine", gain = 0.05) {
+  if (!soundOn) return;
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
@@ -64,6 +66,7 @@ async function init() {
   $("chestBtn").addEventListener("click", onChest);
   $("giftBtn").addEventListener("click", onGift);
   $("wheelBtn").addEventListener("click", onWheel);
+  $("boxBtn").addEventListener("click", onBox);
 
   const pending = app.model.pendingOffline();
   if (pending > 0) showWelcomeBack(pending);
@@ -516,9 +519,11 @@ function onWheel() {
      <h3>Fortune Wheel \u{1F3A1}</h3>
      <div class="wheel-stage"><canvas id="wheelCanvas"></canvas></div>
      <div class="wheel-status" id="wheelStatus"></div>
+     <div class="wheel-result" id="wheelResult"></div>
      <div class="modal-btns" id="wheelBtns"></div>
    </div>`;
   root.appendChild(back);
+  wheelState.pending = null; wheelState.highlight = null;
   wheelState.canvas = document.getElementById("wheelCanvas");
   const s = wheelState.size;
   wheelState.canvas.width = s; wheelState.canvas.height = s;
@@ -535,10 +540,11 @@ function drawWheel() {
   for (let i = 0; i < n; i++) {
     const a0 = wheelState.angle + i * seg, a1 = a0 + seg;
     ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, a0, a1); ctx.closePath();
-    ctx.fillStyle = C.WHEEL_COLORS[i % C.WHEEL_COLORS.length]; ctx.fill();
-    ctx.lineWidth = 2; ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.stroke();
+    const win = wheelState.highlight === i;
+    ctx.fillStyle = win ? "#ffd54f" : C.WHEEL_COLORS[i % C.WHEEL_COLORS.length]; ctx.fill();
+    ctx.lineWidth = win ? 4 : 2; ctx.strokeStyle = win ? "#fff" : "rgba(255,255,255,0.35)"; ctx.stroke();
     ctx.save(); ctx.translate(cx, cy); ctx.rotate(a0 + seg / 2);
-    ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.fillStyle = "#fff";
+    ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.fillStyle = win ? "#3a1c00" : "#fff";
     ctx.font = "700 13px system-ui,sans-serif";
     ctx.fillText(C.WHEEL[i].glyph + " " + C.WHEEL[i].label, R - 10, 0);
     ctx.restore();
@@ -551,25 +557,31 @@ function drawWheel() {
 function renderWheelButtons() {
   const m = app.model, host = $("wheelBtns"); if (!host) return;
   host.innerHTML = "";
-  const free = m.wheelFreeAvailable();
-  const adLeft = m.rewardedLeft("wheel");
-  const alt = C.REWARDED.wheel.coinsAlt;
   const mk = (label, primary, fn, disabled) => {
     const b = document.createElement("button");
     b.className = "btn " + (primary ? "primary" : ""); b.textContent = label; b.disabled = !!disabled;
     b.addEventListener("click", fn); host.appendChild(b);
   };
+  const st = $("wheelStatus");
+  if (wheelState.pending) {
+    mk("Claim " + wheelState.pending.segment.glyph + " " + wheelState.pending.segment.label, true, claimWheel);
+    if (st) st.textContent = "Tap Claim to collect your prize!";
+    return;
+  }
+  if (wheelState.spinning) { if (st) st.textContent = "Spinning\u2026"; return; }
+  const free = m.wheelFreeAvailable();
+  const adLeft = m.rewardedLeft("wheel");
+  const alt = C.REWARDED.wheel.coinsAlt;
   if (free) mk("Free spin", true, () => doSpin("free"));
   else mk("Free spin in " + fmtTime(m.wheelFreeIn()), false, () => {}, true);
   if (adLeft > 0) mk("Watch ad for a spin (" + adLeft + " left)", true, () => doSpin("ad"));
   else mk("Ad spins used up today", false, () => {}, true);
   mk("Spin for " + alt + " \u{1F4B0}", false, () => doSpin("coins"));
   mk("Close", false, closeModal);
-  const st = $("wheelStatus");
   if (st) st.textContent = "Free spin every 5 min \u00B7 " + C.WHEEL.length + " prizes";
 }
 async function doSpin(kind) {
-  if (wheelState.spinning) return;
+  if (wheelState.spinning || wheelState.pending) return;
   const m = app.model;
   if (kind === "free" && !m.wheelFreeAvailable()) return;
   if (kind === "ad" && m.rewardedLeft("wheel") <= 0) return;
@@ -582,6 +594,8 @@ async function doSpin(kind) {
 function spinAnim() {
   const m = app.model;
   wheelState.spinning = true;
+  wheelState.highlight = null;
+  renderWheelResult();
   const pick = m.pickWheel();                 // decide the prize FIRST, then animate to it
   const n = C.WHEEL.length, seg = Math.PI * 2 / n;
   const start = wheelState.angle;
@@ -602,9 +616,32 @@ function spinAnim() {
 }
 function finishSpin(pick) {
   wheelState.spinning = false;
-  app.model.applyWheel(pick.segment);
+  wheelState.pending = pick;               // hold the prize until the player taps Claim
+  wheelState.highlight = pick.index;
+  drawWheel();
   blip(760, 0.18, "triangle", 0.07);
-  toast("You won " + pick.segment.glyph + " " + pick.segment.label + "  \u00B7 " + (pick.segment.rarity || "common"));
+  renderWheelResult();
+  renderWheelButtons();
+}
+function renderWheelResult() {
+  const el = $("wheelResult"); if (!el) return;
+  const p = wheelState.pending;
+  if (!p) { el.innerHTML = ""; return; }
+  const s = p.segment;
+  el.innerHTML = `<div class="wr-card rarity-${s.rarity || "common"}">
+     <div class="wr-glyph">${s.glyph}</div>
+     <div class="wr-label">${s.label}</div>
+     <div class="wr-rarity">${(s.rarity || "common").toUpperCase()}</div>
+   </div>`;
+}
+function claimWheel() {
+  const p = wheelState.pending; if (!p) return;
+  app.model.applyWheel(p.segment);
+  blip(680, 0.16, "triangle", 0.07);
+  toast("Claimed " + p.segment.glyph + " " + p.segment.label);
+  wheelState.pending = null; wheelState.highlight = null;
+  drawWheel();
+  renderWheelResult();
   renderWheelButtons();
   refresh();
 }
@@ -669,10 +706,36 @@ function toast(msg) {
   const t = $("toast"); t.textContent = msg; t.classList.add("show");
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 1600);
 }
+function onBox() {
+  const m = app.model;
+  const free = m.boxFreeAvailable();
+  const left = m.rewardedLeft("box");
+  const alt = C.MYSTERY_BOX.coinsAlt;
+  modal("Mystery Box \u{1F381}", "Open it for a surprise prize \u2014 coins, energy or a booster!", [
+    { label: free ? "Open free box" : (left > 0 ? "Open \u2014 watch a short ad" : "Ad limit reached today"), primary: free || left > 0,
+      onClick: async () => {
+        if (free) m.consumeBoxFree();
+        else if (left > 0) { const ok = await Platform.showRewarded(); if (!ok) { closeModal(); return; } m.rewardedUse("box"); }
+        else return;
+        const r = m.openBox(); boxToast(r.prize); blip(720, 0.16, "triangle", 0.06); closeModal(); refresh();
+      } },
+    { label: `Open with ${alt} \u{1F4B0}`, onClick: () => { if (m.coins < alt) { toast("Not enough coins"); return; } m.coins -= alt; const r = m.openBox(); boxToast(r.prize); closeModal(); refresh(); } },
+    { label: "Later", onClick: closeModal },
+  ]);
+}
+function boxToast(p) { toast(p.glyph + " " + p.label + "!"); }
 function showSettings() {
-  modal("Settings", "Merge & Bloom v2 \u2014 best combo \u00D7" + (app.model.bestCombo || 0), [
-    { label: "Reset progress", onClick: () => { if (confirm("Erase all progress?")) { localStorage.removeItem("mb_save"); location.reload(); } } },
+  const m = app.model;
+  modal("Settings \u2699\uFE0F", "Merge & Bloom v5 \u00B7 best combo \u00D7" + (m.bestCombo || 0) + " \u00B7 " + m.totalMerges + " merges", [
+    { label: "Sound: " + (soundOn ? "ON \u{1F50A}" : "OFF \u{1F507}"), onClick: () => { soundOn = !soundOn; if (soundOn) blip(660, 0.1); showSettings(); } },
+    { label: "How to play", onClick: showHowTo },
+    { label: "Reset progress", onClick: () => { if (confirm("Erase all progress?")) { try { localStorage.removeItem("mb_save"); } catch (e) {} location.reload(); } } },
     { label: "Close", primary: true, onClick: closeModal },
+  ]);
+}
+function showHowTo() {
+  modal("How to play \u{1F331}", "Tap the Seed Pod to drop plants. Drag one plant onto an identical plant to merge them into a higher tier. Fulfil visitor orders, grow your Garden, and spin the Fortune Wheel for prizes.", [
+    { label: "Got it", primary: true, onClick: closeModal },
   ]);
 }
 

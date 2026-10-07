@@ -92,6 +92,7 @@ export const REWARDED = {
   refreshOrders: { cap: 2, coinsAlt: 40 },
   chest:         { cap: 6, coinsAlt: 250 },
   doubleHarvest: { cap: 1, coinsAlt: 0 },
+  box:           { cap: 3, coinsAlt: 80 },   // mystery-box extra opens
 };
 
 // ================= v3: campaign (levels + bosses), themes, leaderboard, =====
@@ -136,6 +137,16 @@ export const WHEEL_COLORS = ["#2ea36b", "#3a5c8a", "#b8860b", "#7a4b8a", "#2e8ba
 export const WHEEL_FREE_PER_DAY = 1;
 export const WHEEL_AD_SPINS = 3;
 export const WHEEL_FREE_COOLDOWN_MS = 5 * 60 * 1000;   // after the free spin, a new free one every 5 min
+
+// --- Mystery Box (a surprise prize; free once a day, more via ad/coins) ---
+export const MYSTERY_BOX = { coinsAlt: 80 };
+export const BOX_PRIZES = [
+  { id: "coins",   label: "Coins",      glyph: "\u{1F4B0}", coins: 250,  weight: 34 },
+  { id: "energy",  label: "Energy",     glyph: "\u26A1",     energy: 30,  weight: 24 },
+  { id: "booster", label: "Booster",    glyph: "\u{1F381}", booster: "random", weight: 20 },
+  { id: "big",     label: "Big coins",  glyph: "\u{1F48E}", coins: 800,  weight: 14 },
+  { id: "mega",    label: "MEGA prize", glyph: "\u{1F3C6}", coins: 2000, energy: 50, weight: 8 },
+];
 
 // --- Achievements (unlock + reward) ---
 export const ACHIEVEMENTS = [

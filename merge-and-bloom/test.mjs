@@ -192,5 +192,24 @@ t("rush hour doubles merge coins", () => {
   assert.ok(b > a);
 });
 
+t("mystery box always yields a valid prize", () => {
+  const m = new GameModel();
+  for (let i = 0; i < 30; i++) { const r = m.openBox(); assert.ok(r.ok && r.prize && r.prize.label); }
+  assert.ok(m.boxFreeAvailable());
+  const now = Date.now(); m.consumeBoxFree(now);
+  assert.equal(m.boxFreeAvailable(now), false);
+});
+
+t("wheel pick is decided before the spin and claimed once", () => {
+  const m = new GameModel();
+  const p = m.pickWheel();
+  assert.ok(p.index >= 0 && p.index < C.WHEEL.length);
+  assert.equal(p.segment, C.WHEEL[p.index]);
+  const c0 = m.coins;
+  m.applyWheel(p.segment);
+  assert.ok(m.coins >= c0);
+  assert.equal(m.wheel.spins, 1);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

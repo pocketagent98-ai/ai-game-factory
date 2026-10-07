@@ -38,6 +38,14 @@ A **portrait HTML5 merge-2 puzzle with an idle “grow-a-garden” meta** — bu
 
 > Ad placements follow the proven hybridcasual playbook: reward multiplier (double), fortune-wheel extra spins, free chest / event entry, speed-ups, and daily rewards — all opt-in, all with a non-ad alternative.
 
+## New in v5 — Claim step, Mystery Box & ads ON
+- **Fortune Wheel now has a Claim step** — the wheel spins, lands, the winning segment lights up, and a prize card (glyph + rarity) appears with a **Claim** button. The prize is granted only when you tap Claim.
+- **Mystery Box** — a 4th reward tile: free open once a day, up to 3 ad opens/day, or coins. Weighted prizes up to a 2,000-coin MEGA.
+- **Ads are ON** — the Playgama Bridge SDK is wired in (async, safe offline fallback). All ads are served by the platform.
+- **Richer Settings** — Sound ON/OFF, How-to-play, Reset progress.
+- **Fixed** — order cards now wrap instead of clipping off the right edge.
+- **30 unit tests + smoke**, including a full spin → Claim assertion.
+
 ## New in v4 — a real spinning wheel, achievements & a cleaner layout
 - **Real animated Fortune Wheel** — an actual 8-segment canvas wheel with a pointer, hub and prize labels. The prize is **decided in code first, then the wheel animates to it** (fair + deterministic), with a long ease-out, several turns, a **tick sound per segment**, and a **rarity** label on the result (common / rare / epic / jackpot).
 - **More spins = more ad moments** — a **free spin every 5 minutes**, up to **3 ad spins/day**, plus a coin spin (with a non-ad alternative). The wheel is the biggest opt-in ad driver in the game.

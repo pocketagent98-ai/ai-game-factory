@@ -27,10 +27,12 @@ const html = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0f3d2e">
 <title>Merge &amp; Bloom</title>
-<!-- ADS ARE OFF for local playtesting so the game always boots instantly and works offline.
-     When you are ready to publish and earn, add the Playgama Bridge SDK here (or use the
-     portal's native SDK). The game auto-detects window.bridge and uses it; without it,
-     ads are simulated and saves use localStorage.  See PUBLISHING.md for the exact tag. -->
+<!-- ADS ON: Playgama Bridge \u2014 ONE integration that routes to Poki, CrazyGames, GameDistribution,
+     Yandex, Playgama and 25+ portals. Loaded async so it never blocks the boot; the game waits
+     for it briefly and falls back to a simulated standalone mode if it is unavailable (offline,
+     file://, or a portal without a Bridge adapter). To turn ads OFF for a local playtest, just
+     delete this one line. All ads are served by the platform \u2014 never a self-hosted network. -->
+<script id="pg-bridge" async src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>
 <style>
 ${css}
 </style>
@@ -76,6 +78,7 @@ ${css}
         <button id="chestBtn" class="rbtn" aria-label="Reward chest"><span class="ri">\u{1F381}</span><span class="rl">Chest</span></button>
         <button id="giftBtn" class="rbtn" aria-label="Daily gift"><span class="ri">\u2728</span><span class="rl">Gift</span></button>
         <button id="wheelBtn" class="rbtn" aria-label="Fortune wheel"><span class="ri">\u{1F3A1}</span><span class="rl">Wheel</span></button>
+        <button id="boxBtn" class="rbtn" aria-label="Mystery box"><span class="ri">\u{1F4E6}</span><span class="rl">Box</span></button>
       </div>
       <div class="actionbar">
         <div id="boosters" class="boosters"></div>
