@@ -54,7 +54,9 @@ async function init() {
 // ---------------------------------------------------------------- layout
 function resize() {
   const wrap = app.canvas.parentElement;
-  const size = Math.min(wrap.clientWidth, wrap.clientHeight);
+  let w = wrap.clientWidth, h = wrap.clientHeight;
+  if (!w || !h) { w = window.innerWidth || 360; h = Math.round((window.innerHeight || 640) * 0.55); }
+  const size = Math.max(200, Math.min(w, h));
   app.dpr = Math.min(window.devicePixelRatio || 1, 2);
   app.canvas.style.width = size + "px";
   app.canvas.style.height = size + "px";

@@ -3,7 +3,7 @@
 The game is a **static HTML5 build** (no build step). Everything you need to publish is in this folder.
 
 ## 1. What to submit (assets to prepare once)
-- **The build:** `index.html` + `css/` + `js/` (zip the folder, or host it and give the URL).
+- **The build:** `index.html` is a **single self-contained file** (all CSS + JS inlined). Submit just that one file (or the whole folder) — no separate `js/`/`css/` needed. Rebuild it from source any time with `node build.mjs`.
 - **Thumbnails:** 512×512, 512×384, 200×120, plus a 16:9 cover. **Bright, text-free** — the thumbnail is the #1 driver of click-through.
 - **Animated thumbnail / hover video** (required for Poki global release; recommended elsewhere).
 - **Short trailer** (10–20 s).

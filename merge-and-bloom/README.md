@@ -2,7 +2,9 @@
 
 A **portrait HTML5 merge-2 puzzle with an idle “grow-a-garden” meta** — built to be published on the big web game portals (Poki, CrazyGames, GameDistribution, GameMonetize, Yandex Games, Playgama) and monetised with **ads only, served entirely by the platforms** (no external ad network).
 
-> **Play it:** open `index.html` (or the GitHub Pages URL once deployed). Fully playable on phone and desktop, portrait-first.
+> **Play it:** `index.html` is a **single self-contained file** (all CSS + JS inlined, no imports) — open it directly from your phone, a zip, or any host, and it just works. It also runs at the GitHub Pages URL.
+>
+> ⚠️ **Do not open the old modular version over `file://`** — browsers block ES-module imports there, which makes the board appear blank. `index.html` is now built (via `node build.mjs`) so it never has that problem.
 
 ---
 

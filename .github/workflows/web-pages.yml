@@ -20,14 +20,22 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: merge-and-bloom
     steps:
       - uses: actions/checkout@v4
-      - name: Verify the game model tests pass
-        working-directory: merge-and-bloom
-        run: |
-          node --version
-          node --check js/config.js && node --check js/model.js && node --check js/platform.js && node --check js/game.js
-          node test.mjs
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Syntax check
+        run: node --check js/config.js && node --check js/model.js && node --check js/platform.js && node --check js/game.js
+      - name: Model unit tests
+        run: node test.mjs
+      - name: Build the single self-contained index.html
+        run: node build.mjs
+      - name: Smoke test (boots + draws the board)
+        run: node smoke.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
