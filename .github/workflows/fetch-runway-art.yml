@@ -1,0 +1,42 @@
+name: Fetch Runway cover art
+
+# Pulls the Runway-generated cover art into the repo so it can be cropped to the
+# exact Playgama sizes locally. The asset URLs are read from the RUNWAY_ART_URLS
+# secret (a JSON map) and are never written into the repository.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [playgama-publish-prep]
+    paths:
+      - ".github/workflows/fetch-runway-art.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Runway art
+        env:
+          RUNWAY_ART_URLS: ${{ secrets.RUNWAY_ART_URLS }}
+        run: |
+          set -euo pipefail
+          mkdir -p release/playgama/assets/_raw
+          echo "$RUNWAY_ART_URLS" | jq -r 'to_entries[] | "\(.key) \(.value)"' | while read -r k u; do
+            echo "fetching $k"
+            curl -sSL --max-time 180 -o "release/playgama/assets/_raw/$k.png" "$u"
+          done
+          ls -la release/playgama/assets/_raw
+          file release/playgama/assets/_raw/*.png
+
+      - name: Commit the art
+        run: |
+          git config user.name  "merge-and-bloom-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add release/playgama/assets/_raw
+          git commit -m "Add Runway-generated cover art (raw, for exact-size crops)" || echo "nothing to commit"
+          git push
