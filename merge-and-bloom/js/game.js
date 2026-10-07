@@ -32,10 +32,12 @@ function blip(freq, dur = 0.09, type = "sine", gain = 0.05) {
 
 // ---------------------------------------------------------------- bootstrap
 async function init() {
-  await Platform.init();
   Platform.onPause = (paused) => { if (paused) Platform.setSave(app.model.serialize()); };
   Platform.onAudio = () => {};
-  const env = Platform.getSave();
+  // never let a missing/hanging platform SDK block the game from booting
+  try { await Promise.race([Platform.init(), new Promise((r) => setTimeout(r, 1500))]); } catch (e) {}
+  let env = null;
+  try { env = Platform.getSave(); } catch (e) {}
   if (env) app.model = GameModel.deserialize(env);
 
   app.canvas = $("board");
@@ -68,6 +70,8 @@ async function init() {
   buildOrders(); buildGarden(); buildLevels(); buildTasks(); buildUpgrades(); buildBoosters();
   setTab("merge");
   requestAnimationFrame(loop);
+  // late layout passes (mobile browsers can report 0 size before layout settles)
+  setTimeout(resize, 250); setTimeout(resize, 900);
   Platform.sendMessage("game_ready");
 }
 

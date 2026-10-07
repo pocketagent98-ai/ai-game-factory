@@ -2,6 +2,10 @@
 import fs from "node:fs";
 const html = fs.readFileSync(new URL("./index.html", import.meta.url), "utf8");
 const script = html.match(/<script>([\s\S]*)<\/script>/)[1];
+// regression guard: the build must have exactly one inline script and NO external scripts
+if (/<script[^>]*\ssrc=/i.test(html)) { console.log("FAIL: external <script src> present (breaks offline/file://)"); process.exit(1); }
+if ((html.match(/<script>/g) || []).length !== 1) { console.log("FAIL: expected exactly one inline <script>"); process.exit(1); }
+if (!/function init/.test(script)) { console.log("FAIL: game code missing from the inline script (premature </script>?)"); process.exit(1); }
 
 let CALLS = { fill: 0, fillText: 0, stroke: 0, clearRect: 0 };
 const ctx = new Proxy({}, { get: (t, p) => (p in CALLS ? (() => { CALLS[p]++; }) : (p in t ? t[p] : () => {})), set: (t, p, v) => { t[p] = v; return true; } });

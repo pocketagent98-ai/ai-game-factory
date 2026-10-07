@@ -10,14 +10,16 @@ The game is a **static HTML5 build** (no build step). Everything you need to pub
 - **Description + controls text** (English mandatory).
 - **Privacy-policy URL** (required if anything links externally).
 
-## 2. Integrate the platform ads (already wired — verify per portal)
-`js/platform.js` **already integrates Playgama Bridge** (LGPL-3.0): it calls `bridge.initialize()`, uses `bridge.storage` for saves, `bridge.advertisement.showInterstitial()` / `showRewarded()`, and the platform pause/audio events — with a **standalone fallback** (localStorage + simulated ads) when Bridge is absent.
+## 2. Ads are OFF by default — turn them on when you publish
+For local playtesting the game ships with **no ad SDK and no external scripts** — it boots instantly, works offline, and saves to localStorage. Play it first, make sure you like it, *then* enable ads.
 
-The Bridge SDK is loaded in `index.html`:
+`js/platform.js` already contains the full **Playgama Bridge** integration (LGPL-3.0): `bridge.initialize()`, `bridge.storage` saves, `bridge.advertisement.showInterstitial()` / `showRewarded()`, and the platform pause/audio events. It activates automatically **only if `window.bridge` exists**, and it can never block the game (all calls are timeout-guarded).
+
+**To enable ads before publishing**, add this one line to `index.html` (it is already present, commented out, in the built file):
 ```html
 <script src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>
 ```
-Bridge is the single integration for Poki, CrazyGames, GameDistribution, Yandex, Playgama, YouTube Playables, MSN, Discord and more. **Ads are served by the platform — never bundle your own ad network (no AdMob/AdSense).** If a portal blocks external scripts, bundle the Bridge file locally or use that portal's native SDK in the same `Platform` interface.
+Bridge is the single integration for Poki, CrazyGames, GameDistribution, Yandex, Playgama, YouTube Playables, MSN, Discord and more. **Ads are served by the platform — never bundle your own ad network (no AdMob/AdSense).** If a portal blocks external scripts, bundle the Bridge file locally or use that portal's native SDK behind the same `Platform` interface.
 
 ## 3. Per-portal checklist
 

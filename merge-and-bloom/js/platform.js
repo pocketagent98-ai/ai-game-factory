@@ -1,9 +1,10 @@
 // Platform adapter — Playgama Bridge integration with a safe standalone fallback.
 //
-// On a real portal the Playgama Bridge SDK is loaded in index.html
-// (<script src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>).
-// Bridge is ONE integration that covers Poki, CrazyGames, GameDistribution, Yandex,
-// Playgama and 25+ platforms: it loads the platform's native SDK and routes calls.
+// ADS ARE OFF BY DEFAULT so the game always boots instantly and works offline for
+// playtesting. When you publish, load the Playgama Bridge SDK in index.html (a script
+// tag is provided, commented out, in the built file) — Bridge is ONE integration that
+// covers Poki, CrazyGames, GameDistribution, Yandex, Playgama and 25+ platforms: it
+// loads the platform's native SDK and routes calls. See PUBLISHING.md.
 //
 // ALL ADS ARE SERVED BY THE PLATFORM. This game never ships its own ad network.
 // If Bridge is not present (local dev, file://, GitHub Pages), we fall back to
@@ -16,20 +17,31 @@ export const Platform = {
   onAudio: null,
 
   async init() {
+    // The game must ALWAYS boot, even if a portal SDK is missing or hangs.
+    // Ads are OFF by default for local playtesting; a portal (or a script tag)
+    // can inject window.bridge and it will be used automatically.
     const b = (typeof window !== "undefined") && window.bridge;
     if (b) {
       try {
-        await b.initialize();
+        await Promise.race([
+          b.initialize(),
+          new Promise((_, rej) => setTimeout(() => rej(new Error("bridge init timeout")), 1500)),
+        ]);
         this.bridge = b;
         try { this.name = b.platform.id; } catch (e) {}
-        // one central handler for pause + audio (fires for ads, tab switches, etc.)
         try {
           b.platform.on(b.EVENT_NAME.PAUSE_STATE_CHANGED, (paused) => { if (this.onPause) this.onPause(paused); });
           b.platform.on(b.EVENT_NAME.AUDIO_STATE_CHANGED, (enabled) => { if (this.onAudio) this.onAudio(enabled); });
         } catch (e) {}
       } catch (e) { this.bridge = null; }
     }
-    await this._preload();
+    // preload the save, but never block the boot for more than ~600 ms
+    try {
+      await Promise.race([
+        this._preload(),
+        new Promise((r) => setTimeout(r, 600)),
+      ]);
+    } catch (e) {}
   },
 
   // ---- saves ------------------------------------------------------------

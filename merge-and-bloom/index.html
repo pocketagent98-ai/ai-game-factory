@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0f3d2e">
 <title>Merge &amp; Bloom</title>
-<!-- Playgama Bridge: one SDK for Poki / CrazyGames / GameDistribution / Yandex / Playgama.
-     If this script is unavailable (file://, offline, or a portal that blocks external
-     requests), the game falls back to standalone saves + simulated ads automatically. -->
-<script src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>
+<!-- ADS ARE OFF for local playtesting so the game always boots instantly and works offline.
+     When you are ready to publish and earn, add the Playgama Bridge SDK here (or use the
+     portal's native SDK). The game auto-detects window.bridge and uses it; without it,
+     ads are simulated and saves use localStorage.  See PUBLISHING.md for the exact tag. -->
 <style>
 :root{
   --bg1:#0f3d2e; --bg2:#124b39; --panel:#173e33; --line:rgba(255,255,255,.14);
@@ -764,10 +764,11 @@ class GameModel {
 
 // Platform adapter — Playgama Bridge integration with a safe standalone fallback.
 //
-// On a real portal the Playgama Bridge SDK is loaded in index.html
-// (<script src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>).
-// Bridge is ONE integration that covers Poki, CrazyGames, GameDistribution, Yandex,
-// Playgama and 25+ platforms: it loads the platform's native SDK and routes calls.
+// ADS ARE OFF BY DEFAULT so the game always boots instantly and works offline for
+// playtesting. When you publish, load the Playgama Bridge SDK in index.html (a script
+// tag is provided, commented out, in the built file) — Bridge is ONE integration that
+// covers Poki, CrazyGames, GameDistribution, Yandex, Playgama and 25+ platforms: it
+// loads the platform's native SDK and routes calls. See PUBLISHING.md.
 //
 // ALL ADS ARE SERVED BY THE PLATFORM. This game never ships its own ad network.
 // If Bridge is not present (local dev, file://, GitHub Pages), we fall back to
@@ -780,20 +781,31 @@ const Platform = {
   onAudio: null,
 
   async init() {
+    // The game must ALWAYS boot, even if a portal SDK is missing or hangs.
+    // Ads are OFF by default for local playtesting; a portal (or a script tag)
+    // can inject window.bridge and it will be used automatically.
     const b = (typeof window !== "undefined") && window.bridge;
     if (b) {
       try {
-        await b.initialize();
+        await Promise.race([
+          b.initialize(),
+          new Promise((_, rej) => setTimeout(() => rej(new Error("bridge init timeout")), 1500)),
+        ]);
         this.bridge = b;
         try { this.name = b.platform.id; } catch (e) {}
-        // one central handler for pause + audio (fires for ads, tab switches, etc.)
         try {
           b.platform.on(b.EVENT_NAME.PAUSE_STATE_CHANGED, (paused) => { if (this.onPause) this.onPause(paused); });
           b.platform.on(b.EVENT_NAME.AUDIO_STATE_CHANGED, (enabled) => { if (this.onAudio) this.onAudio(enabled); });
         } catch (e) {}
       } catch (e) { this.bridge = null; }
     }
-    await this._preload();
+    // preload the save, but never block the boot for more than ~600 ms
+    try {
+      await Promise.race([
+        this._preload(),
+        new Promise((r) => setTimeout(r, 600)),
+      ]);
+    } catch (e) {}
   },
 
   // ---- saves ------------------------------------------------------------
@@ -881,10 +893,12 @@ function blip(freq, dur = 0.09, type = "sine", gain = 0.05) {
 
 // ---------------------------------------------------------------- bootstrap
 async function init() {
-  await Platform.init();
   Platform.onPause = (paused) => { if (paused) Platform.setSave(app.model.serialize()); };
   Platform.onAudio = () => {};
-  const env = Platform.getSave();
+  // never let a missing/hanging platform SDK block the game from booting
+  try { await Promise.race([Platform.init(), new Promise((r) => setTimeout(r, 1500))]); } catch (e) {}
+  let env = null;
+  try { env = Platform.getSave(); } catch (e) {}
   if (env) app.model = GameModel.deserialize(env);
 
   app.canvas = $("board");
@@ -917,6 +931,8 @@ async function init() {
   buildOrders(); buildGarden(); buildLevels(); buildTasks(); buildUpgrades(); buildBoosters();
   setTab("merge");
   requestAnimationFrame(loop);
+  // late layout passes (mobile browsers can report 0 size before layout settles)
+  setTimeout(resize, 250); setTimeout(resize, 900);
   Platform.sendMessage("game_ready");
 }
 

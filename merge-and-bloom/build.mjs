@@ -16,6 +16,8 @@ const game = read("./js/game.js")
   .replace(/\bC\./g, "");
 
 const bundle = `(function(){\n"use strict";\n${config}\n${model}\n${platform}\n${game}\n})();`;
+// Guard: a literal "</script" anywhere in the JS would terminate the inline script early.
+const safeBundle = bundle.replace(/<\/script/gi, "<\\/script");
 const css = read("./css/style.css");
 
 const html = `<!DOCTYPE html>
@@ -25,10 +27,10 @@ const html = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0f3d2e">
 <title>Merge &amp; Bloom</title>
-<!-- Playgama Bridge: one SDK for Poki / CrazyGames / GameDistribution / Yandex / Playgama.
-     If this script is unavailable (file://, offline, or a portal that blocks external
-     requests), the game falls back to standalone saves + simulated ads automatically. -->
-<script src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>
+<!-- ADS ARE OFF for local playtesting so the game always boots instantly and works offline.
+     When you are ready to publish and earn, add the Playgama Bridge SDK here (or use the
+     portal's native SDK). The game auto-detects window.bridge and uses it; without it,
+     ads are simulated and saves use localStorage.  See PUBLISHING.md for the exact tag. -->
 <style>
 ${css}
 </style>
@@ -110,7 +112,7 @@ ${css}
   <div id="modalRoot"></div>
 </div>
 <script>
-${bundle}
+${safeBundle}
 </script>
 </body>
 </html>
